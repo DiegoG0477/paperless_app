@@ -1,35 +1,23 @@
-import os
+# database.py
 import sqlite3
 import shutil
-from pathlib import Path
-
-def get_db_path():
-    env = os.environ.get("APP_ENV", "DEV")
-    
-    if env.upper() == "DEV":
-        base_dir = Path(__file__).resolve().parent.parent.parent / "storage" / "paperless_db"
-    else:
-        if os.name == 'nt':  # Windows
-            base_dir = Path(os.getenv("APPDATA")) / "Paperless"
-        else:
-            base_dir = Path.home() / ".config" / "paperless"
-    
-    base_dir.mkdir(parents=True, exist_ok=True)
-    return base_dir / "paperless.db"
+from config import get_db_path, get_template_db_path, get_init_sql_path
 
 def initialize_database():
+    """
+    Verifica la existencia de la base de datos, copia un template si existe,
+    o ejecuta init.sql para crear la estructura en caso de que no exista.
+    """
     db_path = get_db_path()
     print(f"Buscando base de datos en: {db_path}")
 
     if not db_path.exists():
-        # Si tienes un template, intenta copiarlo (opcional)
-        template_path = Path(__file__).resolve().parent / "data" / "template.db"
+        template_path = get_template_db_path()
         if template_path.exists():
             shutil.copy(template_path, db_path)
             print(f"Base de datos copiada desde la plantilla a {db_path}")
         else:
-            # Leer y ejecutar init.sql
-            init_sql_path = Path(__file__).resolve().parent / "data" / "init.sql"
+            init_sql_path = get_init_sql_path()
             if not init_sql_path.exists():
                 raise FileNotFoundError("No se encontró el archivo de inicialización init.sql.")
             
@@ -42,6 +30,12 @@ def initialize_database():
             print(f"Base de datos creada e inicializada en {db_path}")
     else:
         print("La base de datos ya existe.")
+
+def get_db_connection():
+    """
+    Retorna una conexión activa a la base de datos.
+    """
+    return sqlite3.connect(str(get_db_path()))
 
 if __name__ == "__main__":
     initialize_database()
