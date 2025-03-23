@@ -1,6 +1,6 @@
 # /app/runtime/data/models/orm_models.py
 import datetime
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship, declarative_base
 from core.domain.models.user import UserDomain
 
@@ -9,10 +9,10 @@ Base = declarative_base()
 class PersonalData(Base):
     __tablename__ = 'personal_data'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    first_name = Column(String(42))
-    last_name = Column(String(42))
-    # Relación inversa definida en User
-    user = relationship("User", back_populates="personal_data", uselist=False)
+    first_name = Column(String(42), nullable=False)
+    last_name = Column(String(42), nullable=False)
+
+    author = relationship("Author", back_populates="personal_data", uselist=False)
 
 class User(Base):
     __tablename__ = 'users'
@@ -44,10 +44,16 @@ class User(Base):
 class Author(Base):
     __tablename__ = 'authors'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey('users.id'))
-    personal_data_id = Column(Integer, ForeignKey('personal_data.id'))
-    user = relationship("User", back_populates="authors")
-    # Se pueden agregar más relaciones si es necesario
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    personal_data_id = Column(Integer, ForeignKey('personal_data.id'), nullable=False)
+
+    personal_data = relationship("PersonalData", back_populates="author")
+
+class Settings(Base):
+    __tablename__ = "settings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    main_path = Column(Text, nullable=False)
 
 # class Document(Base):
 #     __tablename__ = 'documents'
