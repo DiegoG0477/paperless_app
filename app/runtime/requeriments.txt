@@ -17,8 +17,6 @@ json5>=0.9.14
 # Sistema y paths
 pathlib>=1.0.1
 
-# Para la interfaz de usuario
-PyQt6>=6.6.0
 
 # Para crear el ejecutable
 PyInstaller>=6.3.0
