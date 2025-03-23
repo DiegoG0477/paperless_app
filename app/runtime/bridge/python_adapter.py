@@ -1,42 +1,24 @@
+# /app/runtime/bridge/python_adapter.py
 import sys
 import json
-import time
-
-def handle_message(message):
-    command = message.get("command")
-    if command == "ping":
-        return {
-            "event": "pong", 
-            "data": {
-                "message": "Backend activo",
-                "timestamp": time.time()
-            }
-        }
-    elif command == "syncDocuments":
-        return {
-            "event": "syncCompleted", 
-            "data": {
-                "success": True,
-                "count": 3,
-                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-            }
-        }
-    else:
-        return {"event": "error", "data": "Comando desconocido"}
+from app.runtime.bridge.event_handler import handle_event
 
 def run_adapter():
+    """
+    Escucha los mensajes entrantes desde Electron, los procesa y responde.
+    """
     while True:
         line = sys.stdin.readline()
         if not line:
             break
         try:
             message = json.loads(line)
-            response = handle_message(message)
+            response = handle_event(message)  # Delegar la ejecución al manejador de eventos
             sys.stdout.write(json.dumps(response) + "\n")
             sys.stdout.flush()
         except Exception as e:
-            # Enviar errores como JSON
-            error_response = {"event": "error", "data": str(e)}
+            # Manejo de errores global para evitar que se rompa el proceso
+            error_response = {"event": "error", "data": {"message": str(e)}}
             sys.stdout.write(json.dumps(error_response) + "\n")
             sys.stdout.flush()
 
