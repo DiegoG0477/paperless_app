@@ -1,5 +1,12 @@
 import sys
-from app.runtime.bridge import python_adapter
+import os
+
+# Agregar la ruta del proyecto a sys.path
+#PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
+#sys.path.insert(0, PROJECT_ROOT)
+
+
+from bridge import python_adapter
 
 def main():
     # Inicializa el núcleo del backend, carga configuraciones, etc.

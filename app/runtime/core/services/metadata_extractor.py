@@ -1,4 +1,3 @@
-# metadata_extractor.py
 import re
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdfdocument import PDFDocument

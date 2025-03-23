@@ -1,23 +1,39 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
-import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
-import { spawn } from 'child_process'
+import { app, shell, BrowserWindow, ipcMain } from 'electron';
+import { join } from 'path';
+import { electronApp, optimizer, is } from '@electron-toolkit/utils';
+import icon from '../../resources/icon.png?asset';
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { config } from 'dotenv';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const envPath = join(__dirname, '../../../../.env');
+console.log('Ruta del .env:', envPath);
+config({ path: envPath });
+
+// Verificar carga de variables
+console.log('Variables cargadas:', process.env.APP_ENV); // Debe mostrar "DEV"
 let backendProcess;
 
 function startPythonBackend() {
-  const isDev = process.env.NODE_ENV === 'development';
+  const isDev = process.env.APP_ENV === 'DEV';
+
+  console.log(process.env.APP_ENV);
+
+  console.log("isDev:", isDev, " ", process.platform);
+
   let backendPath;
-  let args = [];
+  const args = [];
   
   if (isDev) {
-    // En desarrollo, ejecutamos el script de Python directamente.
-    backendPath = join(__dirname, '../../runtime/core/main.py');
-    // Se asume que el intérprete de Python está en el PATH (usar "python3" o "python" según corresponda)
+    // En desarrollo, ejecutamos el script Python directamente.
+    backendPath = join(__dirname, '../../../runtime/main.py');
     return spawn('python3', [backendPath], { stdio: 'pipe' });
   } else {
-    // En producción, buscamos el ejecutable empaquetado
+    // En producción, usar el ejecutable empaquetado.
     if (process.platform === 'win32') {
       backendPath = join(process.resourcesPath, "python_backend.exe");
     } else {
@@ -49,20 +65,28 @@ function createWindow() {
     return { action: 'deny' };
   });
 
-  // Cargar la URL remota en desarrollo o el archivo local en producción
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }
 
-  // Lanzar el backend
+  // Inicia el backend Python.
   backendProcess = startPythonBackend();
 
-  // Conectar la salida del backend a la consola (puedes extenderlo para IPC)
+  // Redirigir mensajes del backend a todos los renderer.
   backendProcess.stdout.on('data', (data) => {
-    console.log(`Backend: ${data}`);
-    // Aquí podrías parsear mensajes JSON y reenviarlos a la UI
+    try {
+      const messages = data.toString().split('\n').filter(line => line);
+      messages.forEach((msg) => {
+        const parsed = JSON.parse(msg);
+        BrowserWindow.getAllWindows().forEach(win => {
+          win.webContents.send("ipc-response", parsed);
+        });
+      });
+    } catch (error) {
+      console.error("Error al parsear datos del backend:", error);
+    }
   });
 
   backendProcess.stderr.on('data', (data) => {
@@ -71,6 +95,11 @@ function createWindow() {
 
   backendProcess.on('close', (code) => {
     console.log(`Backend finalizó con código ${code}`);
+  });
+  
+  // Recibir comandos del renderer y reenviarlos al backend.
+  ipcMain.on("ipc-command", (event, message) => {
+    backendProcess.stdin.write(JSON.stringify(message) + "\n");
   });
 }
 
@@ -81,7 +110,6 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window);
   });
 
-  // Ejemplo de un IPC simple
   ipcMain.on('ping', () => console.log('pong'));
 
   createWindow();

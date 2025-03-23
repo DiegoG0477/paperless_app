@@ -2,7 +2,7 @@
 import os
 import shutil
 from pathlib import Path
-from file_store import get_documents_directory
+from data.file_store import get_documents_directory
 
 def copy_file_to_storage(src_file_path, document_id, version_tag):
     """
