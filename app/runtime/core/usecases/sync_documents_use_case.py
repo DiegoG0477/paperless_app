@@ -29,11 +29,12 @@ def sync_documents(main_path: str):
       5. Genera el hash único del documento y del archivo para identificar versiones. - CODE
       6. Crea las entradas en la BD (Document y Version). - CODE
       7. Detecta errores ortográficos y los registra en la BD. - CODE
-      8. Extrae entidades del fulltext.
-      9. Guarda el fulltext y las entidades en la tabla analyzed_content.
-      10. Genera eventos de calendario a partir de entidades de tipo fecha.
-      11. Actualiza la caché para este documento.
-      12. Repite para cada archivo.
+      8. Extrae entidades del fulltext. - CODE
+      9. Guarda el fulltext y las entidades en la tabla analyzed_content. - CODE
+      10. Genera eventos de calendario a partir de entidades de tipo fecha. - CODE
+      11. Actualiza la caché para este documento. - CODE
+      12. Repite para cada archivo. (verifica existencia -> registra documento || verifica cambios 
+      -> actualiza version || pasa al siguiente) - CODE
     """
     # Instanciar repositorios
     doc_repo = DocumentRepository()
@@ -53,27 +54,23 @@ def sync_documents(main_path: str):
             file_path = os.path.join(root, file)
             print(f"📂 Procesando: {file_path}")
 
-            # 🟢 1. Extraer metadatos del documento
+            previous_version = True
+
+            # 1. Extraer metadatos del documento
             metadata = extract_metadata(file_path)
 
-            # 🟢 2. Verificar y actualizar el autor en la BD
+            # 2. Verificar y actualizar el autor en la BD
             author_name = metadata.get("author", "").strip()
             if author_name:
                 author = author_repo.get_or_create_author(author_name)
             else:
                 author = None  # Si no hay autor, se registrará sin este campo en la BD
-
-            # 🟢 3. Extraer el contenido completo con OCR si es necesario
-            full_text = scan_file(file_path)
-
-            # 🟢 4. Generar tag de versión y copiar el archivo a la estructura interna
-            version_tag = f"v{int(time.time())}"
             
-            # 🟢 5. Generar unique_hash (persistente) y version_hash (basado en contenido)
+            # 3. Generar unique_hash (persistente) y version_hash (basado en contenido)
             doc_unique_hash = calculate_unique_hash(file_path, main_path)
             version_hash = calculate_version_hash(file_path)
 
-            # 🟢 6. Verificar si el documento ya existe en la BD
+            # 4. Verificar si el documento ya existe en la BD
             document = doc_repo.get_document_by_unique_hash(doc_unique_hash)
             if not document:
                 # Si no existe, se registra como nuevo documento
@@ -85,13 +82,22 @@ def sync_documents(main_path: str):
                     main_path=file_path
                 )
 
-            # 🟢 6.5. Verificar si ha cambiado la versión
-            latest_version = ver_repo.get_latest_version(document.id)
-            if latest_version and latest_version.file_hash == version_hash:
-                print(f"📌 El documento '{file}' no ha cambiado, se omite nueva versión.")
-                continue  # Si no hay cambios, pasamos al siguiente documento
+                previous_version = False
 
-            # 🟢 6.8. Se crea una nueva versión porque el documento cambió
+            # 4.5. Verificar si ha cambiado la versión
+            if previous_version:
+                latest_version = ver_repo.get_latest_version_by_document_id(document.id)
+                if latest_version and latest_version.file_hash == version_hash:
+                    print(f"📌 El documento '{file}' no ha cambiado, se omite nueva versión.")
+                    continue  # Si no hay cambios, pasamos al siguiente documento
+
+            # 5. Extraer el contenido completo con OCR si es necesario
+            full_text = scan_file(file_path)
+
+            # 6. Generar tag de versión y copiar el archivo a la estructura interna
+            version_tag = f"v{int(time.time())}"
+
+            # 6.8. Se crea una nueva versión porque el documento cambió
             copied_file_path = copy_file_to_storage(file_path, document.id, version_tag)
             version = ver_repo.add_version(
                 document_id=document.id,
@@ -103,7 +109,7 @@ def sync_documents(main_path: str):
                 size_mb=metadata.get("size_mb", 0.0)
             )
 
-            # 🟢 7. Detectar errores ortográficos en el fulltext
+            # 7. Detectar errores ortográficos en el fulltext
             spelling_errors = detect_spelling_errors(full_text)
             for error in spelling_errors:
                 spelling_repo.create_error(
@@ -111,27 +117,41 @@ def sync_documents(main_path: str):
                     version_id=version.id
                 )
 
-            # 🟢 8. Extraer entidades del fulltext
+            # 8. Extraer entidades del fulltext (usa spaCy + regex)
             entities = extract_entities(full_text)
 
-            # 🟢 9. Guardar el fulltext y las entidades en analyzed_content
+            # Para fechas: Si alguna entrada de fecha no tiene evento, se asigna un valor por defecto.
+            if "fechas" in entities:
+                for idx, fecha in enumerate(entities["fechas"]):
+                    if not fecha.get("evento"):
+                        entities["fechas"][idx]["evento"] = f"Evento de {document.title}"
+
+            # 9. Guardar el fulltext y las entidades en analyzed_content
             analyzed_repo.create_or_update(
                 version_id=version.id,
                 text=full_text,
                 entities=entities
             )
 
-            # 🟢 10. Generar eventos en el calendario a partir de entidades de tipo fecha
+            # 10. Generar eventos en el calendario a partir de entidades de tipo fecha
             for fecha in entities.get("fechas", []):
-                calendar_repo.create_event(
-                    document_id=document.id,
-                    event="Evento generado automáticamente",
-                    date=fecha.get("valor"),
-                    time=None
-                )
+                # Si la fecha no tiene un evento asociado, se asigna un valor por defecto.
+                evento = fecha.get("evento", f"Evento de {document.title}")
 
-            # 🟢 11. Actualizar la caché para este documento
-            update_cache_for_document(file_path, doc_unique_hash, entities)
+                # Se extraen fecha y hora, asegurando que la fecha sea válida
+                fecha_valor = fecha.get("fecha")
+                hora_valor = fecha.get("hora") if "hora" in fecha else None
+
+                if fecha_valor:
+                    calendar_repo.create_event(
+                        document_id=document.id,
+                        event=evento,
+                        date=fecha_valor,
+                        time=hora_valor
+                    )
+
+            # 11. Actualizar la caché para este documento
+            update_cache_for_document(file_path, doc_unique_hash, entities, version_hash, spelling_errors)
 
             print(f"✅ Documento procesado correctamente: {file_path}")
 
