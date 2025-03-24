@@ -1,5 +1,5 @@
 from sqlalchemy.orm import joinedload
-from core.data.database import get_db_session
+from config.database import get_db_session
 from core.data.models.orm_models import Author, PersonalData
 from core.domain.models import Author as DomainAuthor
 

@@ -1,6 +1,6 @@
 # /app/runtime/data/repositories/user_repository.py
 from core.data.models.orm_models import User
-from data.database import get_db_session
+from config.database import get_db_session
 
 class UserRepository:
     def get_user_by_email(self, email: str):

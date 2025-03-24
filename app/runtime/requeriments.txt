@@ -1,22 +1,21 @@
 # Base de datos
-SQLAlchemy>=2.0.0
+SQLAlchemy>=2.0.36
 
-# Procesamiento de documentos
-python-docx>=0.8.11  # Para manejo de archivos .docx
-pdfminer.six>=20221105  # Para extracción de texto de PDFs
-Pillow>=10.0.0  # Para procesamiento de imágenes
+spacy>=3.8.4
 
-# OCR y procesamiento de texto
-pytesseract>=0.3.10  # Para OCR
-spacy>=3.7.2  # Para procesamiento de lenguaje natural
-es-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.7.0/es_core_news_sm-3.7.0-py3-none-any.whl  # Modelo en español para spaCy
+pytesseract>=0.3.13
 
-# Serialización y manejo de datos
-json5>=0.9.14
+pdfminer.six>=20240706
 
-# Sistema y paths
-pathlib>=1.0.1
+pdf2image>=1.17.0
 
+python-docx>=1.1.2
+
+pillow>=10.4.0
+
+bcrypt>=4.2.0
+
+pyenchant>=3.2.2
 
 # Para crear el ejecutable
 PyInstaller>=6.3.0

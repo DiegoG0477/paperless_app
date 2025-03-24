@@ -1,24 +1,54 @@
-# spellcheck_service.py
+# /app/runtime/core/data/services/spellcheck_service.py
+import re
+import spacy
 import enchant
+
+# Cargar modelo de idioma en español
+nlp = spacy.load("es_core_news_sm")
 
 def detect_spelling_errors(text):
     """
-    Detecta errores ortográficos usando la biblioteca pyenchant.
-    Retorna una lista de errores con la palabra y sugerencias.
+    Detecta errores ortográficos en el texto combinando spaCy y PyEnchant.
+    
+    Retorna una lista de errores con:
+      - "word": La palabra mal escrita.
+      - "suggestions": Sugerencias de corrección.
     """
-    dictionary = enchant.Dict("es_ES")  # Usando el diccionario en español
+    dictionary = enchant.Dict("es_ES")  # Corrector en español
     errors = []
-    # Tokenizar el texto (muy simplificado, se puede usar nltk o spaCy)
-    words = text.split()
-    for word in words:
-        if not dictionary.check(word):
-            suggestions = dictionary.suggest(word)
+
+    # Procesar el texto con spaCy
+    doc = nlp(text)
+    
+    for token in doc:
+        # Omitir nombres propios y palabras con caracteres especiales
+        if token.is_stop or token.is_punct or token.like_num or token.is_space:
+            continue
+
+        word = token.text.lower()
+        
+        if not dictionary.check(word):  # Si la palabra está mal escrita
+            
             errors.append({
                 "word": word,
-                "suggestions": suggestions
+                #"suggestions": suggestions if suggestions else ["Sin sugerencias"]
             })
+
     return errors
 
 # Caso de uso:
-# errores = detect_spelling_errors("Texto con algus errores ortográficos")
-# Estos errores se pueden agregar al JSON del analyzed_content o guardarse en una tabla.
+# errores = detect_spelling_errors("Texto con algus errores ortográficos en una sentncia")
+# print(errores)
+
+def get_suggestions(word):
+    """
+    Obtiene sugerencias de corrección para una palabra.
+    """
+    result = []
+    dictionary = enchant.Dict("es_ES")  # Corrector en español
+    suggestions =  dictionary.suggest(word)
+
+    if suggestions:
+        result = suggestions
+
+    return result

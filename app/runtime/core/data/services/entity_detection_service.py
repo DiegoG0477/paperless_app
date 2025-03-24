@@ -25,7 +25,6 @@ def extract_entities(text):
     entities = {
         "personas": [],
         "fechas": [],
-        "documentos_vinculados": [],
         "referencias_legales": [],
         "organizaciones": [],
         "ubicaciones": [],
@@ -41,11 +40,6 @@ def extract_entities(text):
         elif ent.label_ == "ORG":
             entities["organizaciones"].append({"nombre": ent.text})
         # Puedes agregar más reglas según la necesidad
-
-    # Uso de regex para detectar códigos de documento (p.ej., "ABC-2023-001")
-    doc_codes = re.findall(r'\b[A-Z]{3}-\d{4}-\d{3}\b', text)
-    if doc_codes:
-        entities["documentos_vinculados"].extend(doc_codes)
     
     return entities
 
