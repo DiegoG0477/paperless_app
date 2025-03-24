@@ -29,7 +29,9 @@ PERSON_ROLES = {
 # Tipos de organizaciones
 ORG_TYPES = {
     'empresa': r'\b(s\.?a\.?|s\.?r\.?l\.?|corporación|empresa)\b',
-    'gobierno': r'\b(municipalidad|gobierno|secretaría|ministerio)\b'
+    'gobierno': r'\b(municipalidad|gobierno|secretaría|ministerio)\b',
+    'sociedad': r'\b(sociedad|asociación|cooperativa|SA de CV|S.A.|S. de R.L.|cooperativa)\b',
+    'otro': r'\b(organización|institución|entidad|fundación)\b'\
 }
 
 def configure_nlp():
