@@ -1,7 +1,7 @@
 # /app/runtime/bridge/python_adapter.py
 import sys
 import json
-from app.runtime.bridge.event_handler import handle_event
+from bridge.event_handler import handle_event
 
 def run_adapter():
     """

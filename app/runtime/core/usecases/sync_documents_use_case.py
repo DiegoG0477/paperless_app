@@ -10,7 +10,7 @@ from core.data.repositories.spelling_error_repository import SpellingErrorReposi
 from core.data.services.file_copy_service import copy_file_to_storage
 from core.data.services.metadata_extractor import extract_metadata
 from core.data.services.file_scanner import scan_file
-from core.data.services.hash_service import calculate_doc_hash, calculate_version_hash
+from core.data.services.hash_service import calculate_version_hash, calculate_unique_hash
 from core.data.services.spellcheck_service import detect_spelling_errors
 from core.data.services.entity_detection_service import extract_entities
 from core.data.services.cache_service import update_cache_for_document
@@ -22,13 +22,13 @@ def sync_documents(main_path: str):
     """
     Sincroniza documentos en el directorio 'main_path' de forma recursiva.
     Por cada documento:
-      1. Extrae y procesa metadatos.
-      2. Verifica y actualiza el autor en la BD.
-      3. Extrae el contenido completo (usando OCR si es necesario).
-      4. Genera la copia interna del archivo y crea el tag de versión.
-      5. Genera el hash único del documento y del archivo para identificar versiones.
-      6. Crea las entradas en la BD (Document y Version).
-      7. Detecta errores ortográficos y los registra en la BD.
+      1. Extrae y procesa metadatos. - CODE
+      2. Verifica y actualiza el autor en la BD. - CODE
+      3. Extrae el contenido completo (usando OCR si es necesario). - CODE
+      4. Genera la copia interna del archivo y crea el tag de versión. - CODE
+      5. Genera el hash único del documento y del archivo para identificar versiones. - CODE
+      6. Crea las entradas en la BD (Document y Version). - CODE
+      7. Detecta errores ortográficos y los registra en la BD. - CODE
       8. Extrae entidades del fulltext.
       9. Guarda el fulltext y las entidades en la tabla analyzed_content.
       10. Genera eventos de calendario a partir de entidades de tipo fecha.
@@ -66,17 +66,17 @@ def sync_documents(main_path: str):
             # 🟢 3. Extraer el contenido completo con OCR si es necesario
             full_text = scan_file(file_path)
 
-
             # 🟢 4. Generar tag de versión y copiar el archivo a la estructura interna
             version_tag = f"v{int(time.time())}"
             
-            # 🟢 5. Generar hashes para el documento y la versión
-            doc_unique_hash = calculate_doc_hash(file_path)
+            # 🟢 5. Generar unique_hash (persistente) y version_hash (basado en contenido)
+            doc_unique_hash = calculate_unique_hash(file_path, main_path)
             version_hash = calculate_version_hash(file_path)
 
-            # 🟢 6. Crear entrada en la BD (Document y Version)
+            # 🟢 6. Verificar si el documento ya existe en la BD
             document = doc_repo.get_document_by_unique_hash(doc_unique_hash)
             if not document:
+                # Si no existe, se registra como nuevo documento
                 document = doc_repo.create_document(
                     title=metadata.get("title", file),
                     description=metadata.get("description", ""),
@@ -85,6 +85,13 @@ def sync_documents(main_path: str):
                     main_path=file_path
                 )
 
+            # 🟢 6.5. Verificar si ha cambiado la versión
+            latest_version = ver_repo.get_latest_version(document.id)
+            if latest_version and latest_version.file_hash == version_hash:
+                print(f"📌 El documento '{file}' no ha cambiado, se omite nueva versión.")
+                continue  # Si no hay cambios, pasamos al siguiente documento
+
+            # 🟢 6.8. Se crea una nueva versión porque el documento cambió
             copied_file_path = copy_file_to_storage(file_path, document.id, version_tag)
             version = ver_repo.add_version(
                 document_id=document.id,

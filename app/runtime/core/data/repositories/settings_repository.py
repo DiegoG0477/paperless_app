@@ -1,6 +1,6 @@
 # /app/runtime/data/repositories/settings_repository.py
 from core.data.models.orm_models import Settings
-from core.data.database import get_db_session
+from config.database import get_db_session
 from core.domain.models.settings import SettingsDomain
 
 class SettingsRepository:

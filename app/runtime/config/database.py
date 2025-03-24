@@ -1,14 +1,13 @@
+# /app/runtime/core/database.py
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import shutil
-from config import get_db_path, get_template_db_path
-from models import Base  # Asegúrate de tener tus modelos definidos en models.py
+from config.config import get_db_path, get_template_db_path
+from core.data.models.orm_models import Base
 from pathlib import Path
 
 def get_database_url():
-    """
-    Construye la URL de conexión para SQLite usando la ruta definida.
-    """
+    """Construye la URL de conexión para SQLite usando la ruta definida."""
     db_path = get_db_path()
     return f"sqlite:///{db_path}"
 
@@ -21,7 +20,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 def initialize_database():
     """
     Inicializa la base de datos:
-      - Si el archivo no existe, intenta copiar un template (opcional).
+      - Si el archivo no existe y estamos en PROD, intenta copiar un template (opcional).
       - Sino, se procede a crear (o actualizar) las tablas usando SQLAlchemy.
     """
     db_path = get_db_path()
@@ -37,14 +36,11 @@ def initialize_database():
     else:
         print("La base de datos ya existe. Se procederá a actualizar el esquema si es necesario.")
     
-    # Crear (o actualizar) las tablas definidas en Base.metadata.
     Base.metadata.create_all(bind=engine)
     print("Inicialización de la base de datos completada.")
 
 def get_db_session():
-    """
-    Retorna una sesión activa para interactuar con la base de datos.
-    """
+    """Retorna una sesión activa para interactuar con la base de datos."""
     return SessionLocal()
 
 if __name__ == "__main__":

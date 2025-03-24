@@ -1,8 +1,11 @@
 # /app/runtime/data/models/orm_models.py
 import datetime
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, Numeric
 from sqlalchemy.orm import relationship, declarative_base
 from core.domain.models.user import UserDomain
+from core.domain.models.document import DocumentDomain
+from core.domain.models.version import VersionDomain
+from core.domain.models.spelling_error import SpellingErrorDomain
 
 Base = declarative_base()
 
@@ -55,28 +58,70 @@ class Settings(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     main_path = Column(Text, nullable=False)
 
-# class Document(Base):
-#     __tablename__ = 'documents'
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     title = Column(String(255), nullable=False)
-#     description = Column(String(500))
-#     type = Column(String(32))
-#     unique_hash = Column(String(255), unique=True, nullable=False)
-#     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-#     versions = relationship("Version", back_populates="document", cascade="all, delete")
+class Document(Base):
+    __tablename__ = 'documents'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(255), nullable=False)
+    description = Column(String(500))
+    type = Column(String(32))
+    unique_hash = Column(String(255), unique=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    main_path = Column(Text)
+    versions = relationship("Version", back_populates="document", cascade="all, delete")
 
-# class Version(Base):
-#     __tablename__ = 'versions'
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     document_id = Column(Integer, ForeignKey('documents.id'), nullable=False)
-#     version_tag = Column(String(255), nullable=False)
-#     file_path = Column(String(500), nullable=False)
-#     file_hash = Column(String(255), unique=True, nullable=False)
-#     author_id = Column(Integer, ForeignKey('authors.id'), nullable=False)
-#     comment = Column(String(500))
-#     updated_at = Column(DateTime, default=datetime.datetime.utcnow)
-#     document = relationship("Document", back_populates="versions")
-#     analyzed_content = relationship("AnalyzedContent", uselist=False, back_populates="version")
+    def to_domain(self):
+        return DocumentDomain(
+            id=self.id,
+            title=self.title,
+            description=self.description,
+            doc_type=self.type,
+            unique_hash=self.unique_hash,
+            created_at=self.created_at,
+            main_path=self.main_path
+        )
+
+class Version(Base):
+    __tablename__ = 'versions'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    document_id = Column(Integer, ForeignKey('documents.id'), nullable=False)
+    version_tag = Column(String(255), nullable=False)
+    file_path = Column(String(500), nullable=False)
+    file_hash = Column(String(255), unique=True, nullable=False)
+    author_id = Column(Integer, ForeignKey('authors.id'), nullable=False)
+    comment = Column(String(500))
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow)
+    size_mb = Column(Numeric)
+    document = relationship("Document", back_populates="versions")
+    analyzed_content = relationship("AnalyzedContent", uselist=False, back_populates="version")
+
+    def to_domain(self):
+        return VersionDomain(
+            id=self.id,
+            document_id=self.document_id,
+            version_tag=self.version_tag,
+            file_path=self.file_path,
+            file_hash=self.file_hash,
+            author_id=self.author_id,
+            comment=self.comment,
+            updated_at=self.updated_at,
+            size_mb=float(self.size_mb) if self.size_mb is not None else 0.0
+        )
+    
+class SpellErrorORM(Base):
+    __tablename__ = "spell_errors"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    word = Column(String, nullable=False)
+    version_id = Column(Integer, ForeignKey("versions.id"), nullable=False)
+
+    version = relationship("VersionORM", back_populates="spell_errors")
+
+    def to_domain(self):
+        return SpellingErrorDomain(
+            error_id=self.id,
+            word=self.word,
+            version_id=self.version_id
+        )
 
 # class AnalyzedContent(Base):
 #     __tablename__ = 'analyzed_content'
