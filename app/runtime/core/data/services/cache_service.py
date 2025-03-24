@@ -1,29 +1,56 @@
-# cache_service.py
-import hashlib
-from functools import lru_cache
+# /app/runtime/core/data/services/cache_service.py
+from diskcache import Cache
+from pathlib import Path
+import threading
 
-# O bien, una caché global (simplificada)
-hash_cache = {}
+# Definir la ruta para la caché persistente.
+# Por ejemplo, en DEV se puede usar un directorio local, en PROD uno en appdata o similar.
+CACHE_DIR = Path(__file__).resolve().parent.parent.parent / "storage" / "cache"
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-def calculate_file_hash(file_path):
-    sha256 = hashlib.sha256()
-    with open(file_path, 'rb') as f:
-        for block in iter(lambda: f.read(4096), b""):
-            sha256.update(block)
-    return sha256.hexdigest()
+# Inicializar la caché
+cache = Cache(str(CACHE_DIR))
 
-def get_cached_hash(file_path):
-    """Retorna el hash del archivo si ya fue calculado, o lo calcula y lo almacena."""
-    if file_path in hash_cache:
-        return hash_cache[file_path]
-    else:
-        h = calculate_file_hash(file_path)
-        hash_cache[file_path] = h
-        return h
+# Lock para operaciones críticas (si se necesitan)
+cache_lock = threading.Lock()
 
-def clear_hash_cache():
-    """Limpia la caché."""
-    hash_cache.clear()
+def update_cache_for_document(file_path, unique_hash, entities, version_hash=None, spelling_errors=None):
+    """
+    Actualiza o crea la entrada en la caché persistente para un documento.
+    Los datos se almacenan en disco.
+    """
+    with cache_lock:
+        cache[file_path] = {
+            "unique_hash": unique_hash,
+            "version_hash": version_hash,
+            "entities": entities,
+            "file_path": file_path,
+            "spelling_errors": spelling_errors
+        }
 
-# Caso de uso:
-# hash_actual = get_cached_hash("ruta/al/archivo.pdf")
+def get_cached_document(file_path):
+    """
+    Retorna la entrada de la caché persistente para el documento dado, o None si no existe.
+    """
+    with cache_lock:
+        return cache.get(file_path, None)
+
+def clear_cache():
+    """
+    Limpia la caché persistente.
+    """
+    with cache_lock:
+        cache.clear()
+
+# Ejemplo de uso
+if __name__ == '__main__':
+    test_path = "C:/documentos/ejemplo.pdf"
+    update_cache_for_document(
+        test_path,
+        unique_hash="unique123",
+        entities={"personas": [{"nombre": "Juan Pérez", "rol": "demandante", "tipo": "física"}]},
+        version_hash="version456",
+        spelling_errors=[{"word": "errore", "suggestions": ["error"]}]
+    )
+    cached = get_cached_document(test_path)
+    print("Cached data:", cached)

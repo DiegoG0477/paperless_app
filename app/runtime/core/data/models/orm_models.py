@@ -1,11 +1,13 @@
 # /app/runtime/data/models/orm_models.py
 import datetime
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, Numeric
+from sqlalchemy import JSON, Column, String, Integer, DateTime, ForeignKey, Text, Numeric, Date, Time
 from sqlalchemy.orm import relationship, declarative_base
 from core.domain.models.user import UserDomain
 from core.domain.models.document import DocumentDomain
 from core.domain.models.version import VersionDomain
 from core.domain.models.spelling_error import SpellingErrorDomain
+from core.domain.models.analyzed_content import AnalyzedContentDomain
+from core.domain.models.legal_calendar import LegalCalendarDomain
 
 Base = declarative_base()
 
@@ -107,14 +109,14 @@ class Version(Base):
             size_mb=float(self.size_mb) if self.size_mb is not None else 0.0
         )
     
-class SpellErrorORM(Base):
+class SpellErrors(Base):
     __tablename__ = "spell_errors"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     word = Column(String, nullable=False)
     version_id = Column(Integer, ForeignKey("versions.id"), nullable=False)
 
-    version = relationship("VersionORM", back_populates="spell_errors")
+    version = relationship("Version", back_populates="spell_errors")
 
     def to_domain(self):
         return SpellingErrorDomain(
@@ -123,17 +125,48 @@ class SpellErrorORM(Base):
             version_id=self.version_id
         )
 
-# class AnalyzedContent(Base):
-#     __tablename__ = 'analyzed_content'
-#     version_id = Column(Integer, ForeignKey('versions.id'), primary_key=True)
-#     text = Column(Text, nullable=False)
-#     entities = Column(JSON, nullable=False, default={})
-#     version = relationship("Version", back_populates="analyzed_content")
+class AnalyzedContent(Base):
+    """
+    Modelo ORM para la tabla analyzed_content.
+    Almacena el texto analizado y las entidades detectadas para cada versión de documento.
+    """
+    __tablename__ = "analyzed_content"
 
-# class LegalCalendar(Base):
-#     __tablename__ = 'legal_calendar'
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     document_id = Column(Integer, ForeignKey('documents.id'), nullable=False)
-#     event = Column(String, nullable=False)
-#     date = Column(String, nullable=False)  # Podría ser Date si prefieres
-#     time = Column(String)  # Podría ser Time
+    version_id = Column(Integer, ForeignKey("versions.id"), primary_key=True)
+    text = Column(Text, nullable=False)
+    entities = Column(JSON, nullable=False, default={})
+
+    # Relación con la tabla versions
+    version = relationship("Version", back_populates="analyzed_content")
+
+    def to_domain(self):
+        return AnalyzedContentDomain(
+            version_id=self.version_id,
+            text=self.text,
+            entities=self.entities
+        )
+
+class LegalCalendar(Base):
+    """
+    Modelo ORM para la tabla legal_calendar.
+    Almacena eventos legales detectados en los documentos.
+    """
+    __tablename__ = "legal_calendar"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
+    event = Column(String, nullable=False)
+    date = Column(Date, nullable=False)
+    time = Column(Time, nullable=True)  # Puede ser NULL si no se detecta hora.
+
+    # Relación con la tabla documents
+    document = relationship("Document", back_populates="legal_events")
+
+    def to_domain(self):
+        return LegalCalendarDomain(
+            event_id=self.id,
+            document_id=self.document_id,
+            event=self.event,
+            date=self.date,
+            time=self.time
+        )
