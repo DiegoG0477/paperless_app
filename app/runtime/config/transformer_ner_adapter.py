@@ -370,12 +370,15 @@ def composite_hf_ner_component(doc):
             else:
                 # Procesar otros tipos de entidades
                 processed = process_entity(span, doc)
-                # Asegurarse de que el nombre sea el de la predicción para entidades compuestas
-                if "name" in processed and label in ["PER", "PERSON", "PERSONA"]:
-                    processed["name"] = word
             
-            span._.processed = processed
-            ents.append(span)
+            # Solo agregar la entidad si processed no es None
+            if processed is not None:
+                # Asegurarse de que el nombre sea el de la predicción para entidades compuestas
+                if isinstance(processed, dict) and "name" in processed and label in ["PER", "PERSON", "PERSONA"]:
+                    processed["name"] = word
+                
+                span._.processed = processed
+                ents.append(span)
     
     # Filtrar entidades superpuestas
     filtered_ents = filter_spans(ents)
@@ -392,7 +395,8 @@ def composite_hf_ner_component(doc):
         if ent.label_ in ['PER', 'PERSON']:
             print(f"Entidad: {ent.text}")
             print(f"Procesado: {ent._.processed}")
-            print(f"Nombre procesado: {ent._.processed.get('name', 'NO DISPONIBLE')}")
+            if isinstance(ent._.processed, dict):
+                print(f"Nombre procesado: {ent._.processed.get('name', 'NO DISPONIBLE')}")
             print("---")
     
     return doc

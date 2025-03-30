@@ -87,15 +87,14 @@ PATTERNS = {
                 "asesor", "apoderado", "representante", "defensor", "letrado", "querellante"
             ]}}
         ]
-    ],
-    'keywords': [
-        [{"LOWER": {"IN": [
-            "indemnización", "cláusula", "amparo", "sentencia", "recurso", "contrato",
-            "incumplimiento", "arrendatario", "garantía", "litigio", "notificación", "propiedad", 
-            "herencia", "bienes", "delito", "acusado", "licencia", "apelación", "defensa", 
-            "arbitraje", "prueba", "ejecución", "resolución", "demanda", "procedimiento", "dictamen"
-        ]}}]
     ]
+}
+
+KEYWORDS = {
+    "indemnización", "cláusula", "amparo", "sentencia", "recurso", "contrato",
+    "incumplimiento", "arrendatario", "garantía", "litigio", "notificación", "propiedad", 
+    "herencia", "bienes", "delito", "acusado", "licencia", "apelación", "defensa", 
+    "arbitraje", "prueba", "ejecución", "resolución", "demanda", "procedimiento", "dictamen"
 }
 
 PERSON_ROLES = {
@@ -180,6 +179,8 @@ def convert_spanish_number(s: str) -> int:
 def process_date(date_str):
     try:
         date_str = date_str.strip()
+
+        INVALID_DATE = "__INVALID_DATE__"
         
         # Intento 1: Parseo directo con formato español
         date_pattern = re.compile(
@@ -195,7 +196,8 @@ def process_date(date_str):
                 year = int(match.group('year'))
                 return {
                     "fecha": f"{year}-{month:02d}-{day:02d}",
-                    "evento": ""
+                    "evento": "",
+                    "is_valid": True
                 }
             except (KeyError, ValueError) as e:
                 logging.warning(f"Fecha parcialmente inválida: {date_str} - {str(e)}")
@@ -207,7 +209,8 @@ def process_date(date_str):
             date_obj = datetime.strptime(date_str, "%d de %B de %Y")
             return {
                 "fecha": date_obj.strftime("%Y-%m-%d"),
-                "evento": ""
+                "evento": "",
+                "is_valid": True
             }
         except (ValueError, locale.Error) as e:
             logging.debug(f"Formato alternativo no reconocido: {date_str} - {str(e)}")
@@ -221,17 +224,18 @@ def process_date(date_str):
                 year = int(parts[2])
                 return {
                     "fecha": f"{year}-{month:02d}-{day:02d}",
-                    "evento": ""
+                    "evento": "",
+                    "is_valid": True
                 }
             except ValueError as e:
                 logging.warning(f"Componentes de fecha inválidos: {date_str} - {str(e)}")
         
-        logging.info(f"Fecha no procesada: {date_str}")
-        return {"fecha": date_str, "evento": ""}
+        # Si llegamos aquí, la fecha no es válida
+        return INVALID_DATE
         
     except Exception as e:
         logging.error(f"Error crítico procesando fecha: {date_str} - {str(e)}")
-        return {"fecha": date_str, "evento": ""}
+        return INVALID_DATE
 
 def detect_location_type(ent, doc):
     """
@@ -303,6 +307,13 @@ def detect_location_type(ent, doc):
     
     return "otro"
 
+def is_valid_name(text):
+    """
+    Verifica si el texto contiene solo letras, espacios y caracteres válidos para nombres.
+    """
+    # Permitir letras (incluyendo acentos), espacios y algunos caracteres especiales
+    return bool(re.match(r'^[A-ZÁÉÍÓÚÜÑa-záéíóúüñ\s]+$', text))
+
 def process_person(ent, doc):
     try:
         name_tokens = []
@@ -320,24 +331,23 @@ def process_person(ent, doc):
         
         full_name = ' '.join(name_tokens) if name_tokens else ent.text
         
+        # Verificar si el nombre es válido
+        if not is_valid_name(full_name):
+            return None
+        
         # Mejorar detección de roles con contexto ampliado
         context = doc[max(0, ent.start-5):min(len(doc), ent.end+5)].text
         role = detect_role(context)
         
         return {
-            "name": full_name,
+            "name": full_name.strip(),
             "role": role if role != "desconocido" else "NO",
             "tipo": "física",
             "complete_role": f"{role} {full_name}".strip() if role != "desconocido" else full_name
         }
     except Exception as e:
         logging.warning(f"Error procesando persona: {str(e)}")
-        return {
-            "name": ent.text,
-            "role": "NO",
-            "tipo": "física",
-            "complete_role": ent.text
-        }
+        return None  # Cambiar para retornar None en lugar de un objeto parcial
 
 def detect_role(text):
     text = re.sub(r'\s+', ' ', text).lower()  # Normalizar espacios
@@ -360,20 +370,107 @@ def detect_role(text):
     
     return "desconocido"
 
+def check_if_legal_ref(text):
+    """
+    Verifica si el texto contiene patrones de referencia legal.
+    Ahora busca coincidencias en cualquier parte del texto, no solo al inicio.
+    """
+    text = text.strip()
+    for pattern in PATTERNS['legal_reference']:
+        try:
+            # Construir el patrón pero haciéndolo más flexible
+            pattern_parts = [item['TEXT']['REGEX'] for item in pattern]
+            # Eliminar los marcadores de inicio (^) y fin ($) si existen
+            pattern_parts = [p.strip('^$') for p in pattern_parts]
+            # Crear un patrón que busque estas partes en cualquier lugar del texto
+            pattern_text = r'.*?' + r'\s+'.join(pattern_parts) + r'.*?'
+            if re.search(pattern_text, text, re.IGNORECASE | re.DOTALL):
+                return True
+        except Exception as e:
+            print(f"Error procesando patrón de referencia legal: {e}")
+    return False
+
+def check_if_legal_doc(text):
+    """
+    Verifica si el texto contiene patrones de documento legal.
+    Busca coincidencias en cualquier parte del texto.
+    """
+    text = text.strip()
+    for pattern in PATTERNS['document_code']:
+        try:
+            # Obtener el patrón base
+            pattern_text = pattern[0]['TEXT']['REGEX']
+            # Eliminar los marcadores de inicio y fin si existen
+            pattern_text = pattern_text.strip('^$')
+            # Crear un patrón más flexible que busque en cualquier parte del texto
+            flexible_pattern = r'.*?' + pattern_text + r'.*?'
+            if re.search(flexible_pattern, text, re.IGNORECASE | re.DOTALL):
+                return True
+        except Exception as e:
+            print(f"Error procesando patrón de documento legal: {e}")
+    return False
+
+
+def check_if_keyword(text):
+    """
+    Verifica si el texto contiene alguna palabra clave legal.
+    Retorna la keyword encontrada o None si no hay coincidencia.
+    """
+    text_lower = text.lower()
+    for keyword in KEYWORDS:
+        pattern = r'\b' + re.escape(keyword) + r'\b'
+        if re.search(pattern, text_lower):
+            return keyword
+    return None
+
+# Función auxiliar para debugging
+def find_matching_keywords(text):
+    """
+    Función de utilidad que devuelve todas las keywords encontradas en el texto.
+    Útil para debugging y verificación.
+    """
+    text_lower = text.lower()
+    matches = []
+    for keyword in KEYWORDS:
+        pattern = r'\b' + re.escape(keyword) + r'\b'
+        if re.search(pattern, text_lower):
+            matches.append(keyword)
+    return matches
+
 def process_entity(ent, doc):
     if ent.label_ in ["PERSON_W_ROLE", "PER", "PERSON", "NAME"]:
         return process_person(ent, doc)
     elif ent.label_ == "ORG":
         return process_organization(ent.text)
     elif ent.label_ in ["DATE", "DATE_NATURAL"]:
-        return process_date(ent.text)
+        result = process_date(ent.text)
+        if result == "__INVALID_DATE__":
+            # Intentar reclasificar la entidad
+            if check_if_legal_ref(ent.text):
+                return {"ley": "", "artículo": ent.text}
+            elif check_if_legal_doc(ent.text):
+                return {"text": ent.text, "label": "LEGAL_DOC"}
+            elif keyword := check_if_keyword(ent.text):  # Usar assignment expression
+                return {"text": keyword}  # Retornar solo la keyword encontrada
+            else:
+                return None
+        return result
     elif ent.label_ == "LEGAL_DOC":
         return {"text": ent.text, "label": "LEGAL_DOC"}
     elif ent.label_ == "LEGAL_REF":
         return {"ley": "", "artículo": ent.text}
     elif ent.label_ == "KEYWORD":
-        return {"text": ent.text}
-    return {"text": ent.text, "label": ent.label_}
+        if keyword := check_if_keyword(ent.text):  # Usar assignment expression
+            return {"text": keyword}  # Retornar solo la keyword encontrada
+        return None
+    elif ent.label_ == "OTH":
+        if check_if_legal_ref(ent.text):
+            return {"ley": "", "artículo": ent.text}
+        elif check_if_legal_doc(ent.text):
+            return {"text": ent.text, "label": "LEGAL_DOC"}
+        elif keyword := check_if_keyword(ent.text):  # Usar assignment expression
+            return {"text": keyword}  # Retornar solo la keyword encontrada
+    return None
 
 def process_organization(text):
     text_lower = text.lower()

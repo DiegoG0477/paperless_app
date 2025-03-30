@@ -55,27 +55,50 @@ def extract_entities(text):
                 }
     if current_loc: ubicaciones.append(current_loc)
 
+    # Procesar y filtrar entidades
+    fechas = [
+        ent._.processed for ent in doc.ents 
+        if ent.label_ in ["DATE", "DATE_NATURAL"] 
+        and ent._.processed is not None 
+        and ent._.processed != "__INVALID_DATE__"
+    ]
+
+    # Resto de entidades procesadas y filtradas
     return {
         "personas": [
             ent._.processed for ent in doc.ents 
             if ent.label_ in ["PER", "PERSON", "PERSONA"] 
             and isinstance(ent._.processed, dict)
         ],
-        "fechas": [ent._.processed for ent in doc.ents if ent.label_ in ["DATE", "DATE_NATURAL"]],
-        "organizaciones": [ent._.processed for ent in doc.ents if ent.label_ == "ORG"],
-        
-        "ubicaciones": [{
-            "tipo": detect_location_type({
-                'text': loc['text'],
-                'start': loc['start'],
-                'end': loc['end']
-            }, doc),
-            "valor": loc['text']
-        } for loc in ubicaciones],
-        
-        "referencias_legales": [{
-            "ley": "",
-            "artículo": ent.text
-        } for ent in doc.ents if ent.label_ == "LEGAL_REF"],
-        "terminos_clave": [ent.text for ent in doc.ents if ent.label_ in ["LEGAL_DOC", "KEYWORD"]]
+        "fechas": fechas,
+        "organizaciones": [
+            ent._.processed for ent in doc.ents 
+            if ent.label_ == "ORG" 
+            and ent._.processed is not None
+        ],
+        "ubicaciones": [
+            {
+                "tipo": detect_location_type({
+                    'text': loc['text'],
+                    'start': loc['start'],
+                    'end': loc['end']
+                }, doc),
+                "valor": loc['text']
+            } for loc in ubicaciones
+        ],
+        "referencias_legales": [
+            ent._.processed for ent in doc.ents 
+            if (ent.label_ == "LEGAL_REF" or 
+                (ent.label_ in ["DATE", "DATE_NATURAL", "OTH"] and 
+                 isinstance(ent._.processed, dict) and 
+                 "artículo" in ent._.processed)) and 
+            ent._.processed is not None
+        ],
+        "terminos_clave": [
+            ent.text for ent in doc.ents 
+            if ent.label_ in ["LEGAL_DOC", "KEYWORD"] or
+            (ent.label_ in ["DATE", "DATE_NATURAL", "OTH"] and 
+             isinstance(ent._.processed, dict) and 
+             "text" in ent._.processed)
+        ]
     }
