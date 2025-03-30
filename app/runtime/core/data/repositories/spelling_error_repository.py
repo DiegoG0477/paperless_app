@@ -13,7 +13,7 @@ class SpellingErrorRepository:
         new_error = SpellErrors(word=error_word, version_id=version_id)
         self.session.add(new_error)
         self.session.commit()
-        return SpellingError(id=new_error.id, word=new_error.word, version_id=new_error.version_id)
+        return SpellingError(error_id=new_error.id, word=new_error.word, version_id=new_error.version_id)
 
     def get_errors_by_version(self, version_id: int):
         """Obtiene los errores ortográficos de una versión específica."""

@@ -64,7 +64,7 @@ def sync_documents(main_path: str):
             if author_name:
                 author = author_repo.get_or_create_author(author_name)
             else:
-                author = None  # Si no hay autor, se registrará sin este campo en la BD
+                author = "unknowmn"  # Si no hay autor, se registrará sin este campo en la BD
             
             # 3. Generar unique_hash (persistente) y version_hash (basado en contenido)
             doc_unique_hash = calculate_unique_hash(file_path, main_path)
@@ -119,6 +119,8 @@ def sync_documents(main_path: str):
 
             # 8. Extraer entidades del fulltext (usa spaCy + regex)
             entities = extract_entities(full_text)
+
+            print("entities finales ", entities)
 
             # Para fechas: Si alguna entrada de fecha no tiene evento, se asigna un valor por defecto.
             if "fechas" in entities:

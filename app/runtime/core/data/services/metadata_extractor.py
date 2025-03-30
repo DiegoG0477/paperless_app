@@ -28,6 +28,24 @@ def normalize_date(date_str):
     except ValueError:
         return None  # Fecha inválida
 
+def get_filename_as_title(file_path):
+    """
+    Extrae el nombre del archivo sin extensión para usarlo como título.
+    
+    Args:
+        file_path (str): Ruta completa del archivo
+        
+    Returns:
+        str: Nombre del archivo sin extensión
+    """
+    # Obtener el nombre del archivo con extensión (último componente después del último slash o backslash)
+    filename = Path(file_path).name
+    
+    # Remover la extensión (.pdf, .docx, .doc)
+    title = filename.rsplit('.', 1)[0]
+    
+    return title
+
 def extract_pdf_metadata(file_path):
     """Extrae metadatos relevantes de un archivo PDF."""
     metadata = {}
@@ -41,6 +59,9 @@ def extract_pdf_metadata(file_path):
             metadata['created'] = normalize_date(info.get(b'/CreationDate', b'').decode('utf-8', errors='ignore')) if info.get(b'/CreationDate') else None
             metadata['modified'] = normalize_date(info.get(b'/ModDate', b'').decode('utf-8', errors='ignore')) if info.get(b'/ModDate') else None
             metadata['description'] = info.get(b'/Subject', b'').decode('utf-8', errors='ignore') if info.get(b'/Subject') else ""
+
+    if not metadata.get('title'):
+        metadata['title'] = get_filename_as_title(file_path)
 
     # Si no se obtuvo fecha de creación, usamos la del sistema (fallback)
     if not metadata.get("created"):
@@ -67,6 +88,9 @@ def extract_docx_metadata(file_path):
         "modified": normalize_date(core_props.modified.isoformat()) if core_props.modified else None,
         "description": "",  # No existe un campo estándar de descripción en docx; se deja vacío.
     }
+
+    if not metadata.get('title'):
+        metadata['title'] = get_filename_as_title(file_path)
 
     # Si no se obtuvo fecha de creación, usamos la del sistema (fallback)
     if not metadata.get("created"):
