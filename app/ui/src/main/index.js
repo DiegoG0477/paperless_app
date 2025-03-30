@@ -18,7 +18,7 @@ config({ path: envPath });
 console.log('Variables cargadas:', process.env.APP_ENV); // Debe mostrar "DEV"
 let backendProcess;
 
-function startPythonBackend() {
+/* function startPythonBackend() {
   const isDev = process.env.APP_ENV === 'DEV';
 
   console.log(process.env.APP_ENV);
@@ -41,7 +41,7 @@ function startPythonBackend() {
     }
     return spawn(backendPath, args, { stdio: 'pipe' });
   }
-}
+} */
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
