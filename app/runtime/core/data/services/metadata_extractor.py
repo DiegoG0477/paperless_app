@@ -55,7 +55,7 @@ def extract_pdf_metadata(file_path):
         if hasattr(doc, 'info') and doc.info:
             info = doc.info[0]
             metadata['title'] = info.get(b'/Title', b'').decode('utf-8', errors='ignore') if info.get(b'/Title') else ""
-            metadata['author'] = info.get(b'/Author', b'').decode('utf-8', errors='ignore') if info.get(b'/Author') else ""
+            metadata['author'] = info.get(b'/Author', b'').decode('utf-8', errors='ignore') if info.get(b'/Author') else "unkowmn"
             metadata['created'] = normalize_date(info.get(b'/CreationDate', b'').decode('utf-8', errors='ignore')) if info.get(b'/CreationDate') else None
             metadata['modified'] = normalize_date(info.get(b'/ModDate', b'').decode('utf-8', errors='ignore')) if info.get(b'/ModDate') else None
             metadata['description'] = info.get(b'/Subject', b'').decode('utf-8', errors='ignore') if info.get(b'/Subject') else ""
@@ -83,7 +83,7 @@ def extract_docx_metadata(file_path):
     core_props = doc.core_properties
     metadata = {
         "title": core_props.title if core_props.title else "",
-        "author": core_props.author if core_props.author else "",
+        "author": core_props.author if core_props.author else "unkowmn",
         "created": normalize_date(core_props.created.isoformat()) if core_props.created else None,
         "modified": normalize_date(core_props.modified.isoformat()) if core_props.modified else None,
         "description": "",  # No existe un campo estándar de descripción en docx; se deja vacío.

@@ -59,12 +59,14 @@ def sync_documents(main_path: str):
             # 1. Extraer metadatos del documento
             metadata = extract_metadata(file_path)
 
+            print("metadata extraido: ", metadata)
+
             # 2. Verificar y actualizar el autor en la BD
             author_name = metadata.get("author", "").strip()
             if author_name:
                 author = author_repo.get_or_create_author(author_name)
             else:
-                author = "unknowmn"  # Si no hay autor, se registrará sin este campo en la BD
+                author = None  # Si no hay autor, se registrará sin este campo en la BD
             
             # 3. Generar unique_hash (persistente) y version_hash (basado en contenido)
             doc_unique_hash = calculate_unique_hash(file_path, main_path)
