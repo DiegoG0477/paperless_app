@@ -1,7 +1,7 @@
 # /app/runtime/core/file_store.py
 import os
 from pathlib import Path
-from config import get_base_directory
+from config.config import get_base_directory
 
 def get_data_directory():
     """Retorna la ruta base donde se almacenan documentos y datos de la app."""

@@ -25,7 +25,7 @@ CREATE TABLE "documents" (
 	"id"	INTEGER,
 	"title"	VARCHAR(255) NOT NULL,
 	"description"	VARCHAR(500),
-	"type"	VARCHAR(32) CHECK("type" IN ('contrato', 'demanda', 'acuerdo', 'escritura')),
+	"type"	VARCHAR(32) CHECK("type" IN ('contrato', 'demanda', 'acuerdo', 'escritura', 'desconocido')),
 	"unique_hash"	VARCHAR(255) NOT NULL UNIQUE,
 	"created_at"	DATETIME DEFAULT CURRENT_TIMESTAMP,
 	"main_path"	TEXT,

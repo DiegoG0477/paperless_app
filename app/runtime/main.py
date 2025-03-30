@@ -1,20 +1,31 @@
 import sys
 import os
-from bridge import python_adapter
-from core.data.services.entity_detection_service import configure_nlp
-
-# Agregar la ruta del proyecto a sys.path
-#PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
-#sys.path.insert(0, PROJECT_ROOT)
+#from bridge import python_adapter
+from pathlib import Path
 
 def main():
-    # Inicializa el núcleo del backend, carga configuraciones, etc.
-    # Por ejemplo, inicializar base de datos, cargar servicios, etc.
+
     
     # Ejecuta el adapter para recibir mensajes desde Electron
-    python_adapter.run_adapter()
+    #python_adapter.run_adapter()
 
-    configure_nlp()
+    train = False
+
+    if train:
+        from config.nlp_train_model import fine_tune_model, nlp
+        
+        TRAINING_FILE = Path(__file__).resolve().parent / "resources" / "nlp_training_data.json"
+        print("resources path: ", TRAINING_FILE)
+
+        
+        fine_tune_model(TRAINING_FILE, iterations=20)
+    else:
+        from core.usecases.sync_documents_use_case import sync_documents
+
+        # Inicia el proceso de sincronización de documentos
+        path = "/home/diego/Documentos/Paperless/sample"
+
+        sync_documents(path)
 
 if __name__ == '__main__':
     main()

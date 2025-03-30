@@ -1,7 +1,7 @@
 from sqlalchemy.orm import joinedload
 from config.database import get_db_session
 from core.data.models.orm_models import Author, PersonalData
-from core.domain.models import Author as DomainAuthor
+from core.domain.models.author import AuthorDomain
 
 class AuthorRepository:
     def get_author_by_name(self, first_name: str, last_name: str):
@@ -18,7 +18,7 @@ class AuthorRepository:
                 .options(joinedload(Author.personal_data))
                 .first()
             )
-            return DomainAuthor(author.id, author.personal_data.first_name, author.personal_data.last_name, author.user_id) if author else None
+            return AuthorDomain(author.id, author.personal_data.first_name, author.personal_data.last_name, author.user_id) if author else None
         finally:
             session.close()
 
@@ -46,7 +46,7 @@ class AuthorRepository:
             session.commit()
             session.refresh(author)
 
-            return DomainAuthor(author.id, first_name, last_name)
+            return AuthorDomain(author.id, first_name, last_name)
         except Exception as e:
             session.rollback()
             raise e

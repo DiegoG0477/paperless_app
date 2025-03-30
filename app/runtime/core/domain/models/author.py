@@ -1,4 +1,4 @@
-class Author:
+class AuthorDomain:
     def __init__(self, id, first_name, last_name, user_id=None):
         self.id = id
         self.first_name = first_name
