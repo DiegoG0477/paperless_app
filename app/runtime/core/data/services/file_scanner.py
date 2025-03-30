@@ -6,6 +6,7 @@ from pdfminer.pdfparser import PDFSyntaxError
 from pdf2image import convert_from_path
 from docx import Document
 from PIL import Image
+import re
 
 # Configurar Tesseract OCR
 if os.name == 'nt':
@@ -24,6 +25,33 @@ def is_scanned_pdf(file_path):
         return len(text.strip()) < 10  # Si el texto extraído es muy corto, probablemente sea un PDF escaneado
     except PDFSyntaxError:
         return True  # Si hay un error en el parsing, puede ser un escaneado o corrupto
+    
+def format_extracted_text(text: str) -> str:
+    """
+    Formatea el texto para normalizar espacios y eliminar saltos de línea excesivos.
+
+    Se realizan las siguientes acciones:
+      - Se eliminan múltiples saltos de línea, dejandolo por ejemplo un solo salto.
+      - Se eliminan espacios en exceso.
+      - Se quitan los saltos de línea para unir párrafos si es deseado.
+
+    Args:
+        text (str): Texto extraído del documento.
+
+    Returns:
+        str: Texto formateado.
+    """
+    # Reemplazar saltos de línea múltiples por un solo salto
+    cleaned_text = re.sub(r'\n+', '\n', text)
+    
+    # Reemplazar múltiples espacios por uno solo
+    cleaned_text = re.sub(r'[ ]+', ' ', cleaned_text)
+    
+    # Eliminar saltos de línea en caso de que se quiera obtener un solo párrafo
+    # Si se requiere conservar los saltos de línea que separan párrafos, comentar la siguiente línea:
+    cleaned_text = re.sub(r'\n', ' ', cleaned_text)
+    
+    return cleaned_text.strip()
 
 def extract_text_from_docx(file_path):
     """Extrae texto de un archivo DOCX y detecta imágenes."""

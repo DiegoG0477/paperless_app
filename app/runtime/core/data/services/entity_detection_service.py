@@ -36,7 +36,7 @@ def extract_entities(text):
     """
     doc = nlp(text)
 
-    print("📀 ents: ", doc.ents )
+    print("📀 ents: ", doc.ents)
 
     ubicaciones = []
     current_loc = None
@@ -64,15 +64,15 @@ def extract_entities(text):
         "fechas": [ent._.processed for ent in doc.ents if ent.label_ in ["DATE", "DATE_NATURAL"]],
         "organizaciones": [ent._.processed for ent in doc.ents if ent.label_ == "ORG"],
         
-        # "ubicaciones": [{
-        #     "tipo": detect_location_type(ent, doc),
-        #     "valor": ent.text
-        # } for ent in doc.ents if ent.label_ in ["LOC", "GPE"]],
-        
         "ubicaciones": [{
-            "tipo": detect_location_type(ent, doc),
-            "valor": ent.text
-        } for ent in ubicaciones],
+            "tipo": detect_location_type({
+                'text': loc['text'],
+                'start': loc['start'],
+                'end': loc['end']
+            }, doc),
+            "valor": loc['text']
+        } for loc in ubicaciones],
+        
         "referencias_legales": [{
             "ley": "",
             "artículo": ent.text

@@ -9,7 +9,7 @@ from core.data.repositories.legal_calendar_repository import LegalCalendarReposi
 from core.data.repositories.spelling_error_repository import SpellingErrorRepository
 from core.data.services.file_copy_service import copy_file_to_storage
 from core.data.services.metadata_extractor import extract_metadata
-from core.data.services.file_scanner import scan_file
+from core.data.services.file_scanner import scan_file, format_extracted_text
 from core.data.services.hash_service import calculate_version_hash, calculate_unique_hash
 from core.data.services.spellcheck_service import detect_spelling_errors
 from core.data.services.entity_detection_service import extract_entities
@@ -94,7 +94,11 @@ def sync_documents(main_path: str):
                     continue  # Si no hay cambios, pasamos al siguiente documento
 
             # 5. Extraer el contenido completo con OCR si es necesario
-            full_text = scan_file(file_path)
+            extracted_text = scan_file(file_path)
+
+            full_text = format_extracted_text(extracted_text)
+
+            print("📝 fulltext ", full_text)
 
             # 6. Generar tag de versión y copiar el archivo a la estructura interna
             version_tag = f"v{int(time.time())}"

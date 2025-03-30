@@ -365,7 +365,7 @@ def composite_hf_ner_component(doc):
                     "name": word,  # Usar la palabra completa de la predicción
                     "role": role if role != "desconocido" else "NO",
                     "tipo": "física",
-                    "complete_role": f"{role} {word}".strip() if role != "NO" else word
+                    "complete_role": f"{role} {word}".strip() if role != "desconocido" else word
                 }
             else:
                 # Procesar otros tipos de entidades

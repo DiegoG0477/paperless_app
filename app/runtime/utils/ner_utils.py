@@ -234,17 +234,36 @@ def process_date(date_str):
         return {"fecha": date_str, "evento": ""}
 
 def detect_location_type(ent, doc):
-    text = ent.text.lower()
+    """
+    Detecta el tipo de ubicación basado en el texto y contexto.
+    
+    Args:
+        ent (Union[Span, dict]): La entidad a procesar (puede ser un Span de spaCy o un diccionario)
+        doc (Doc): El documento spaCy completo
+    
+    Returns:
+        str: El tipo de ubicación detectada
+    """
+    # Si ent es un diccionario, extraer los valores necesarios
+    if isinstance(ent, dict):
+        text = ent.get('text', '').lower()
+        start = ent.get('start', 0)
+        end = ent.get('end', 0)
+    else:
+        text = ent.text.lower()
+        start = ent.start
+        end = ent.end
     
     # Nueva lógica para nombres compuestos
     if ' ' in text:
-        context = doc[max(0, ent.start-2):min(len(doc), ent.end+2)].text.lower()
+        context = doc[max(0, start-2):min(len(doc), end+2)].text.lower()
         if re.search(r'\b(ciudad|municipio|estado)\s+de\s+', context):
             return "ciudad" if 'ciudad' in context else "estado"
     
     # Mejorar detección de ciudades compuestas
     if re.search(r'\b(ciudad de \w+)|(puerto \w+)\b', text):
         return "ciudad"
+    
     if re.search(r'\d', text):
         if re.search(r'\bjuzgado\b', text) or re.search(r'\b(calle|avenida|autopista|carretera)\b', text):
             return "direccion"
@@ -260,9 +279,12 @@ def detect_location_type(ent, doc):
             return "ciudad"
         if re.search(r'\b(país|república|nación)\b', text):
             return "pais"
-    start = max(0, ent.start - 3)
-    end = min(len(doc), ent.end + 3)
-    context = doc[start:end].text.lower()
+    
+    # Obtener contexto
+    start_context = max(0, start - 3)
+    end_context = min(len(doc), end + 3)
+    context = doc[start_context:end_context].text.lower()
+    
     if re.search(r'\b(juzgado|calle|avenida|autopista|carretera)\b', context):
         return "direccion"
     if re.search(r'\b(colonia|fracc|barrio|urbanización)\b', context):
@@ -275,8 +297,10 @@ def detect_location_type(ent, doc):
         return "ciudad"
     if re.search(r'\b(país|república|nación)\b', context):
         return "pais"
-    if len(context.split()) <= 2:
+    
+    if len(text.split()) <= 2:
         return "ciudad"
+    
     return "otro"
 
 def process_person(ent, doc):
