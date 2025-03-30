@@ -21,6 +21,3 @@ def run_adapter():
             error_response = {"event": "error", "data": {"message": str(e)}}
             sys.stdout.write(json.dumps(error_response) + "\n")
             sys.stdout.flush()
-
-if __name__ == '__main__':
-    run_adapter()

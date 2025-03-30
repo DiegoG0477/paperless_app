@@ -21,20 +21,6 @@ ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx"}
 def sync_documents(main_path: str):
     """
     Sincroniza documentos en el directorio 'main_path' de forma recursiva.
-    Por cada documento:
-      1. Extrae y procesa metadatos. - CODE
-      2. Verifica y actualiza el autor en la BD. - CODE
-      3. Extrae el contenido completo (usando OCR si es necesario). - CODE
-      4. Genera la copia interna del archivo y crea el tag de versión. - CODE
-      5. Genera el hash único del documento y del archivo para identificar versiones. - CODE
-      6. Crea las entradas en la BD (Document y Version). - CODE
-      7. Detecta errores ortográficos y los registra en la BD. - CODE
-      8. Extrae entidades del fulltext. - CODE
-      9. Guarda el fulltext y las entidades en la tabla analyzed_content. - CODE
-      10. Genera eventos de calendario a partir de entidades de tipo fecha. - CODE
-      11. Actualiza la caché para este documento. - CODE
-      12. Repite para cada archivo. (verifica existencia -> registra documento || verifica cambios 
-      -> actualiza version || pasa al siguiente) - CODE
     """
     # Instanciar repositorios
     doc_repo = DocumentRepository()
