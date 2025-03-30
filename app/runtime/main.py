@@ -4,8 +4,6 @@ import os
 from pathlib import Path
 
 def main():
-
-    
     # Ejecuta el adapter para recibir mensajes desde Electron
     #python_adapter.run_adapter()
 
