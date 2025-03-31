@@ -97,27 +97,24 @@ class AuthorRepository:
         self._author_cache[author_id] = author_domain
         
         return author_domain
-            
+
     def get_authors_by_ids(self, author_ids: list[int]) -> dict[int, AuthorDomain]:
         """
-        Obtiene múltiples autores por sus IDs en una sola consulta
-        para evitar el problema N+1
+        Obtiene múltiples autores por sus IDs en una sola consulta,
+        evitando el problema N+1.
         """
         # Filtrar IDs que ya están en cache
-        #missing_ids = [id for id in author_ids if id not in self._author_cache]
+        missing_ids = [id for id in author_ids if id not in self._author_cache]
         
-        #if not missing_ids:
-        #    return {id: self._author_cache[id] for id in author_ids}
-        
+        if not missing_ids:
+            return {id: self._author_cache[id] for id in author_ids}
+            
         session = get_db_session()
-
-        #.filter(Author.id.in_(missing_ids))\
         authors = session.query(Author)\
             .options(joinedload(Author.personal_data))\
-            .filter(Author.id.in_(author_ids))\
+            .filter(Author.id.in_(missing_ids))\
             .all()
-            
-        # Convertir a objetos de dominio y actualizar cache
+        
         for author in authors:
             author_domain = AuthorDomain(
                 id=author.id,
@@ -125,9 +122,7 @@ class AuthorRepository:
                 last_name=author.personal_data.last_name,
                 user_id=author.user_id
             )
-            author = author_domain.to_dict()
-            #self._author_cache[author.id] = author_domain
-                
-        # Retornar todos los autores solicitados (desde cache + nuevos)
-        #return {id: self._author_cache[id] for id in author_ids if id in self._author_cache}
-        return authors
+            # Guardamos la instancia directamente en cache:
+            self._author_cache[author.id] = author_domain
+        
+        return {id: self._author_cache[id] for id in author_ids if id in self._author_cache}

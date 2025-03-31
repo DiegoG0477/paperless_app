@@ -16,16 +16,32 @@ class GetDocumentsUseCase:
         self.spelling_error_repository = SpellingErrorRepository()
         self.author_repository = AuthorRepository()
 
+    # def _format_date(self, date_value: Any) -> str:
+    #     """
+    #     Formatea una fecha para la respuesta JSON,
+    #     manejando tanto objetos datetime como strings
+    #     """
+    #     if isinstance(date_value, datetime):
+    #         return date_value.isoformat()
+    #     elif isinstance(date_value, str):
+    #         return date_value
+    #     return str(date_value) if date_value else ""
+
     def _format_date(self, date_value: Any) -> str:
         """
         Formatea una fecha para la respuesta JSON,
         manejando tanto objetos datetime como strings
         """
-        if isinstance(date_value, datetime):
-            return date_value.isoformat()
-        elif isinstance(date_value, str):
-            return date_value
-        return str(date_value) if date_value else ""
+        try:
+            if isinstance(date_value, datetime):
+                return date_value.isoformat()
+            elif isinstance(date_value, str):
+                # Limpiar cualquier escape o comilla extra
+                return date_value.strip('"').replace('\\', '')
+            return str(date_value) if date_value else ""
+        except Exception as e:
+            print(f"Error formateando fecha {date_value}: {e}")
+            return str(datetime.now().isoformat())
 
     def format_document(self, document, versions, analyzed_content, spelling_errors):
         """Helper para formatear la información de un documento"""
@@ -47,7 +63,9 @@ class GetDocumentsUseCase:
                         "author": (authors_dict.get(version.author_id).full_name() 
                                  if version.author_id in authors_dict 
                                  else "Sistema"),
-                        "comment": version.comment or ""
+                        "comment": version.comment or "",
+                        "size_mb": version.size_mb,
+                        "author": version.author_id
                     }
                     formatted_versions.append(version_data)
                 except Exception as e:
@@ -76,7 +94,8 @@ class GetDocumentsUseCase:
                 "description": document.description or "",
                 "type": document.type or "",
                 "fileType": document.main_path.split('.')[-1] if document.main_path else None,
-                "fileSize": "N/A",
+                "main_path": document.main_path,
+                "fileSize": latest_version.size_mb,
                 "versions": formatted_versions,
                 "author": (authors_dict.get(latest_version.author_id).full_name() 
                           if latest_version and latest_version.author_id in authors_dict 

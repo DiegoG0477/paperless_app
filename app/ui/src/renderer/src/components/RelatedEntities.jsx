@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { User, Building2, MapPin, Calendar, Tag } from 'lucide-react';
 import { Button } from './ui/button';
 
-const EntityGroup = ({ title, entities, icon, onEntityClick }) => {
+const EntityGroup = ({ title, entities, icon, onEntityClick, displayKeys }) => {
   if (!entities || entities.length === 0) return null;
   
   return (
@@ -20,9 +19,25 @@ const EntityGroup = ({ title, entities, icon, onEntityClick }) => {
             className="text-sm py-1 px-2 rounded-md hover:bg-gray-100 cursor-pointer flex justify-between items-center"
             onClick={() => onEntityClick(entity)}
           >
-            <span className="truncate">{entity.nombre || entity.valor}</span>
-            {entity.rol && <span className="text-xs text-gray-500">{entity.rol}</span>}
-            {entity.tipo && entity.tipo !== 'física' && entity.tipo !== 'empresa' && <span className="text-xs text-gray-500">{entity.tipo}</span>}
+            <span className="truncate">
+              { 
+                // Para personas y organizaciones, usamos "nombre" o "name"
+                (entity.nombre || entity.name) ||
+                // Para fechas, mostramos "text"
+                (entity.text) ||
+                // Para ubicaciones se puede usar "valor"
+                (entity.valor)
+              }
+            </span>
+            { displayKeys && entity[displayKeys] && 
+              <span className="text-xs text-gray-500">{entity[displayKeys]}</span>
+            }
+            {
+              // En caso de fechas, ademas mostramos el evento
+              displayKeys === 'text' && entity.evento && (
+                <span className="text-xs text-gray-500 ml-2">{entity.evento}</span>
+              )
+            }
           </div>
         ))}
       </div>
@@ -62,27 +77,30 @@ const RelatedEntities = ({ entities }) => {
               entities={entities.personas} 
               icon={<User className="w-4 h-4 text-blue-500" />}
               onEntityClick={handleEntityClick}
+              // En personas, mostramos "role" si disponible
+              displayKeys="role"
             />
-            
             <EntityGroup 
               title="Organizaciones" 
               entities={entities.organizaciones} 
               icon={<Building2 className="w-4 h-4 text-green-500" />}
               onEntityClick={handleEntityClick}
+              // Para organizaciones, se puede mostrar "type"
+              displayKeys="type"
             />
-            
             <EntityGroup 
               title="Ubicaciones" 
               entities={entities.ubicaciones} 
               icon={<MapPin className="w-4 h-4 text-red-500" />}
               onEntityClick={handleEntityClick}
             />
-            
             <EntityGroup 
               title="Fechas relevantes" 
               entities={entities.fechas} 
               icon={<Calendar className="w-4 h-4 text-orange-500" />}
               onEntityClick={handleEntityClick}
+              // Para fechas, usamos "text" y mostramos también el "evento"
+              displayKeys="text"
             />
 
             {entities.terminos_clave && entities.terminos_clave.length > 0 && (

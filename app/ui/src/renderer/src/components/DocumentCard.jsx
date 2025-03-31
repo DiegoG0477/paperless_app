@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Calendar, FileText, User, Tag, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -14,12 +13,13 @@ const getDocumentIcon = (type) => {
     case 'escritura':
       return <FileText className="text-purple-500" />;
     default:
-      return <FileText className="text-gray-500" />;
+      // return <FileText className="text-gray-500" />;
+      return <FileText className="text-blue-400" />;
   }
 };
 
 const getFileIcon = (fileType) => {
-  switch (fileType) {
+  switch (fileType.toLowerCase()) {
     case 'pdf':
       return <span className="text-red-500 font-medium">PDF</span>;
     case 'doc':
@@ -43,16 +43,21 @@ const formatDate = (dateStr) => {
 
 const DocumentCard = ({ document, isSelected, onSelect, viewMode = 'list' }) => {
   const navigate = useNavigate();
-  
+
   const handleCardClick = () => {
     navigate(`/document/${document.id}`);
   };
-  
+
   const handleCheckboxClick = (e) => {
     e.stopPropagation();
     onSelect(document.id);
   };
-  
+
+  // Determine the number of versions, safely handling when versions is an array
+  const versionCount = Array.isArray(document.versions)
+    ? document.versions.length
+    : document.versions || 1;
+
   if (viewMode === 'list') {
     return (
       <div 
@@ -74,7 +79,9 @@ const DocumentCard = ({ document, isSelected, onSelect, viewMode = 'list' }) => 
         
         <div className="flex-1 ml-2">
           <h3 className="font-medium text-gray-900">{document.title}</h3>
-          <p className="text-sm text-gray-500">{document.description || 'Sin descripción'}</p>
+          <p className="text-sm text-gray-500">
+            {document.description || 'Sin descripción'}
+          </p>
         </div>
         
         <div className="flex items-center space-x-6 text-sm text-gray-500">
@@ -89,7 +96,7 @@ const DocumentCard = ({ document, isSelected, onSelect, viewMode = 'list' }) => 
           
           <div className="flex items-center space-x-1 min-w-20">
             <History className="w-4 h-4" />
-            <span>{document.versions || 1}</span>
+            <span>{versionCount}</span>
           </div>
           
           <div className="flex items-center space-x-1 min-w-32">
@@ -123,8 +130,12 @@ const DocumentCard = ({ document, isSelected, onSelect, viewMode = 'list' }) => 
           />
         </div>
         
-        <h3 className="font-medium text-gray-900 mb-1 line-clamp-1">{document.title}</h3>
-        <p className="text-sm text-gray-500 mb-3 line-clamp-2">{document.description || 'Sin descripción'}</p>
+        <h3 className="font-medium text-gray-900 mb-1 line-clamp-1">
+          {document.title}
+        </h3>
+        <p className="text-sm text-gray-500 mb-3 line-clamp-2">
+          {document.description || 'Sin descripción'}
+        </p>
         
         <div className="flex flex-wrap gap-y-2 text-xs text-gray-500">
           <div className="flex items-center space-x-1 mr-3">

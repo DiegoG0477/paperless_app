@@ -18,7 +18,7 @@ config({ path: envPath });
 console.log('Variables cargadas:', process.env.APP_ENV); // Debe mostrar "DEV"
 let backendProcess;
 
-/* function startPythonBackend() {
+function startPythonBackend() {
   const isDev = process.env.APP_ENV === 'DEV';
 
   console.log(process.env.APP_ENV);
@@ -41,7 +41,7 @@ let backendProcess;
     }
     return spawn(backendPath, args, { stdio: 'pipe' });
   }
-} */
+}
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -55,6 +55,9 @@ function createWindow() {
       sandbox: false
     }
   });
+  
+  // Maximizar la ventana cuando se cree
+  mainWindow.maximize();
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show();
@@ -74,23 +77,63 @@ function createWindow() {
   // Inicia el backend Python.
   backendProcess = startPythonBackend();
 
-  // Redirigir mensajes del backend a todos los renderer.
+  let messageBuffer = '';
+
   backendProcess.stdout.on('data', (data) => {
     try {
-      const messages = data.toString().split('\n').filter(line => line);
-      messages.forEach((msg) => {
-        const parsed = JSON.parse(msg);
+      // Agregar los nuevos datos al buffer
+      messageBuffer += data.toString();
+      
+      let messages = [];
+      
+      // Separa por salto de línea, ya que cada mensaje JSON fue enviado en una línea completa.
+      let parts = messageBuffer.split('\n');
+      // El último elemento podría ser un mensaje incompleto, por lo que se mantiene en el buffer.
+      messageBuffer = parts.pop();
+      
+      // Procesar cada parte completa
+      parts.forEach(part => {
+        if (part.trim()) {
+          try {
+            const parsed = JSON.parse(part);
+            if (parsed.event && parsed.data !== undefined) {
+              messages.push(parsed);
+            }
+          } catch (e) {
+            console.error('Error al parsear fragmento:', part);
+          }
+        }
+      });
+      
+      // Procesar los mensajes válidos
+      messages.forEach(parsed => {
+        console.log('Enviando mensaje al frontend:', {
+          event: parsed.event,
+          dataType: typeof parsed.data,
+          isArray: Array.isArray(parsed.data),
+          dataLength: Array.isArray(parsed.data) ? parsed.data.length : 'N/A'
+        });
+        
         BrowserWindow.getAllWindows().forEach(win => {
           win.webContents.send("ipc-response", parsed);
         });
       });
+      
+      // Si el buffer es muy grande y no hay JSON válido, limpiarlo
+      if (messageBuffer.length > 1000000) {
+        console.warn('Buffer muy grande, limpiando...');
+        messageBuffer = '';
+      }
+      
     } catch (error) {
-      console.error("Error al parsear datos del backend:", error);
+      console.error("Error procesando stream:", error);
+      messageBuffer = ''; // Resetear el buffer en caso de error
     }
   });
 
-  backendProcess.stderr.on('data', (data) => {
-    console.error(`Backend error: ${data}`);
+  // Limpiar el buffer cuando el proceso termine
+  backendProcess.on('close', () => {
+    messageBuffer = '';
   });
 
   backendProcess.on('close', (code) => {
