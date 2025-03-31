@@ -1,4 +1,6 @@
 from sqlalchemy.orm import Session
+from datetime import datetime
+from typing import Optional
 from core.data.models.orm_models import Document
 from config.database import get_db_session
 from core.data.services.cache_service import (
@@ -12,40 +14,31 @@ from core.data.services.cache_service import (
 class DocumentRepository:
     def __init__(self):
         self.session: Session = get_db_session()
+        
+    def _parse_cached_date(self, date_value: str | datetime) -> datetime:
+        """Convierte una fecha cacheada a datetime"""
+        return (
+            datetime.fromisoformat(date_value.strip('"'))
+            if isinstance(date_value, str)
+            else date_value
+        )
 
-    def get_document_by_unique_hash(self, unique_hash: str):
-        """Busca un documento por su hash único."""
-        # Intentar obtener de la caché primero
-        cached_doc = get_cached_document_by_hash(unique_hash)
+    def _prepare_cached_document(self, cached_doc: dict) -> dict:
+        """Prepara un documento cacheado para ser convertido a Document"""
         if cached_doc:
-            return Document(**cached_doc)
-            
-        # Si no está en caché, obtener de la BD
-        doc = self.session.query(Document).filter_by(unique_hash=unique_hash).first()
-        if doc:
-            cache_document(doc)  # Cachear para futuras consultas
-        return doc
-
-    def get_document_by_id(self, document_id: int):
-        """Busca un documento por su ID."""
-        # Intentar obtener de la caché primero
-        cached_doc = get_cached_document_by_id(document_id)
-        if cached_doc:
-            return Document(**cached_doc)
-
-        # Si no está en caché, obtener de la BD
-        doc = self.session.query(Document).filter_by(id=document_id).first()
-        if doc:
-            cache_document(doc)  # Cachear para futuras consultas
-        return doc
+            cached_doc = cached_doc.copy()  # Evitar modificar el original en caché
+            cached_doc['created_at'] = self._parse_cached_date(cached_doc['created_at'])
+        return cached_doc
 
     def get_all_documents(self):
         """Obtiene todos los documentos ordenados por fecha de creación descendente."""
         # Intentar obtener de la caché primero
-        cached_documents = get_all_cached_documents()
-        if cached_documents:
+        if cached_documents := get_all_cached_documents():
             # Convertir los documentos cacheados a objetos Document
-            return [Document(**doc) for doc in cached_documents]
+            return [
+                Document(**self._prepare_cached_document(doc))
+                for doc in cached_documents
+            ]
 
         # Si no está en caché, obtener de la BD
         documents = self.session.query(Document).order_by(Document.created_at.desc()).all()
@@ -56,6 +49,32 @@ class DocumentRepository:
             cache_document_list(documents)
         
         return documents
+
+    def get_document_by_id(self, document_id: int) -> Optional[Document]:
+        """Busca un documento por su ID."""
+        # Intentar obtener de la caché primero
+        if cached_doc := get_cached_document_by_id(document_id):
+            return Document(**self._prepare_cached_document(cached_doc))
+
+        # Si no está en caché, obtener de la BD
+        if doc := self.session.query(Document).filter_by(id=document_id).first():
+            cache_document(doc)  # Cachear para futuras consultas
+            return doc
+        
+        return None
+
+    def get_document_by_unique_hash(self, unique_hash: str) -> Optional[Document]:
+        """Busca un documento por su hash único."""
+        # Intentar obtener de la caché primero
+        if cached_doc := get_cached_document_by_hash(unique_hash):
+            return Document(**self._prepare_cached_document(cached_doc))
+            
+        # Si no está en caché, obtener de la BD
+        if doc := self.session.query(Document).filter_by(unique_hash=unique_hash).first():
+            cache_document(doc)  # Cachear para futuras consultas
+            return doc
+            
+        return None
 
     def get_document_by_main_path(self, main_path: str):
         """Busca un documento en la base de datos usando su ruta principal."""

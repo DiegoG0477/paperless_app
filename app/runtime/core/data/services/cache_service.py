@@ -20,13 +20,11 @@ suggestions_cache = Cache(str(CACHE_DIR / "suggestions"))
 def datetime_handler(obj):
     """Handler para serializar objetos datetime"""
     if isinstance(obj, datetime):
-        return obj.isoformat()
+        return obj.isoformat()  # Usar isoformat directamente sin json.dumps
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
-# Métodos para Documents
 def cache_document(document):
     """Guarda un documento en la caché"""
-    # Guardar por ID y por unique_hash
     document_data = {
         "id": document.id,
         "title": document.title,
@@ -34,11 +32,11 @@ def cache_document(document):
         "type": document.type,
         "unique_hash": document.unique_hash,
         "main_path": document.main_path,
-        "created_at": json.dumps(document.created_at, default=datetime_handler)
+        "created_at": datetime_handler(document.created_at)  # Usar el handler directamente
     }
     document_cache[f"id:{document.id}"] = document_data
     document_cache[f"hash:{document.unique_hash}"] = document_data
-    return document_data
+    return document_data    
 
 def get_cached_document_by_id(document_id):
     """Obtiene un documento de la caché por ID"""

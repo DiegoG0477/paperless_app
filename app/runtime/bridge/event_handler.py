@@ -125,8 +125,6 @@ def handle_get_documents(message):
         
         result = get_documents_use_case.execute(document_id)
 
-        #print("resultado del get documents: ", result)
-
         if result.get("success"):
             return {
                 "event": "getDocumentsSuccess",
