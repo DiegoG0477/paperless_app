@@ -1,9 +1,9 @@
 import re
 from datetime import datetime
-from spacy.matcher import Matcher
-from spacy.tokens import Span
-from spacy.language import Language
-from spacy.util import filter_spans
+# from spacy.matcher import Matcher
+# from spacy.tokens import Span
+# from spacy.language import Language
+# from spacy.util import filter_spans
 import logging
 
 logging.basicConfig(
@@ -11,39 +11,39 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-@Language.factory("entity_refiner", default_config={"matcher": None})
-class EntityRefiner:
-    def __init__(self, nlp, name, matcher):
-        self.nlp = nlp
-        self.name = name
-        self.matcher = matcher
+# @Language.factory("entity_refiner", default_config={"matcher": None})
+# class EntityRefiner:
+#     def __init__(self, nlp, name, matcher):
+#         self.nlp = nlp
+#         self.name = name
+#         self.matcher = matcher
 
-    def __call__(self, doc):
-        new_ents = []
-        if self.matcher:
-            matches = self.matcher(doc)
-            for match_id, start, end in matches:
-                label = doc.vocab.strings[match_id].upper()
-                new_ent = Span(doc, start, end, label=label)
-                new_ents.append(new_ent)
-        for ent in doc.ents:
-            processed = process_entity(ent, doc)
-            new_ent = Span(doc, ent.start, ent.end, label=ent.label_)
-            new_ent._.processed = processed
-            new_ents.append(new_ent)
-        doc.ents = tuple(filter_spans(new_ents))
-        return doc
+#     def __call__(self, doc):
+#         new_ents = []
+#         if self.matcher:
+#             matches = self.matcher(doc)
+#             for match_id, start, end in matches:
+#                 label = doc.vocab.strings[match_id].upper()
+#                 new_ent = Span(doc, start, end, label=label)
+#                 new_ents.append(new_ent)
+#         for ent in doc.ents:
+#             processed = process_entity(ent, doc)
+#             new_ent = Span(doc, ent.start, ent.end, label=ent.label_)
+#             new_ent._.processed = processed
+#             new_ents.append(new_ent)
+#         doc.ents = tuple(filter_spans(new_ents))
+#         return doc
 
-def configure_nlp(nlp):
-    if not nlp.has_pipe("entity_refiner"):
-        matcher = Matcher(nlp.vocab)
-        configure_matcher(matcher)
-        nlp.add_pipe("entity_refiner", after="ner")
-        nlp.get_pipe("entity_refiner").matcher = matcher
+# def configure_nlp(nlp):
+#     if not nlp.has_pipe("entity_refiner"):
+#         matcher = Matcher(nlp.vocab)
+#         configure_matcher(matcher)
+#         nlp.add_pipe("entity_refiner", after="ner")
+#         nlp.get_pipe("entity_refiner").matcher = matcher
 
-def configure_matcher(matcher):
-    for label, patterns in PATTERNS.items():
-        matcher.add(label, patterns)
+# def configure_matcher(matcher):
+#     for label, patterns in PATTERNS.items():
+#         matcher.add(label, patterns)
 
 PATTERNS = {
     'legal_reference': [

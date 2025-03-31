@@ -13,7 +13,14 @@ from core.data.services.file_scanner import scan_file, format_extracted_text
 from core.data.services.hash_service import calculate_version_hash, calculate_unique_hash
 from core.data.services.spellcheck_service import detect_spelling_errors
 from core.data.services.entity_detection_service import extract_entities
-from core.data.services.cache_service import update_cache_for_document
+from core.data.services.cache_service import (
+    cache_document,
+    cache_version,
+    cache_analyzed_content,
+    cache_spelling_errors,
+    clear_all_caches,
+    cache_word_suggestions
+)
 
 # Lista de extensiones válidas
 ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx"}
@@ -144,9 +151,75 @@ def sync_documents(main_path: str):
                         time=hora_valor
                     )
 
-            # 11. Actualizar la caché para este documento
-            update_cache_for_document(file_path, doc_unique_hash, entities, version_hash, spelling_errors)
-
             print(f"✅ Documento procesado correctamente: {file_path}")
 
-    return {"success": True, "message": "Sincronización completada."}
+    result = migrate_to_cache()
+
+    return result
+
+    #return {"success": True, "message": "Sincronización completada."}
+
+def migrate_to_cache():
+    doc_repo = DocumentRepository()
+    ver_repo = VersionRepository()
+    analyzed_repo = AnalyzedContentRepository()
+    spelling_repo = SpellingErrorRepository()
+
+    print("🔄 Iniciando migración de datos a caché...")
+
+    # Limpiar todas las cachés antes de la migración
+    clear_all_caches()
+    
+    try:
+        # 1. Migrar todos los documentos
+        print("📝 Migrando documentos...")
+        all_documents = doc_repo.get_all_documents()
+        for document in all_documents:
+            cache_document(document)
+
+        # 2. Migrar todas las versiones
+        print("📚 Migrando versiones...")
+        for document in all_documents:
+            versions = ver_repo.get_versions_by_document_id(document.id)
+            for version in versions:
+                cache_version(version)
+                
+                # 3. Migrar contenido analizado para cada versión
+                print("Migrando contenido de un doc...")
+                analyzed_content = analyzed_repo.get_by_version_id(version.id)
+                if analyzed_content:
+                    cache_analyzed_content(analyzed_content)
+                
+                # 4. Migrar errores ortográficos y sus sugerencias para cada versión
+                print("Migrando errores y sugerencias de un doc...")
+                spelling_errors = spelling_repo.get_errors_by_version(version.id)
+                if spelling_errors:
+                    # Cachear errores
+                    cache_spelling_errors(version.id, spelling_errors)
+                    # Cachear sugerencias para cada palabra con error
+                    for error in spelling_errors:
+                        word = error['word']
+                        suggestions = error.get('suggestions', [])
+                        if suggestions:  # Solo cachear si hay sugerencias
+                            cache_word_suggestions(word, suggestions)
+
+        print("✅ Migración a caché completada exitosamente")
+        
+    except Exception as e:
+        print(f"❌ Error durante la migración a caché: {str(e)}")
+        # Limpiar la caché en caso de error para evitar datos inconsistentes
+        clear_all_caches()
+        return {"success": False, "message": f"Error durante la migración a caché: {str(e)}"}
+
+    result = {
+        "success": True, 
+        "message": "migración a caché completadas.",
+        "stats": {
+            "documents_cached": len(all_documents),
+            "versions_cached": sum(len(ver_repo.get_versions_by_document_id(doc.id)) for doc in all_documents)
+        }
+    }
+
+    print(result)
+
+    return result

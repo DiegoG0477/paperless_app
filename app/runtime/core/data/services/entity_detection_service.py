@@ -21,19 +21,20 @@
 
 import spacy
 from spacy.tokens import Span
-from config.transformer_ner_adapter import load_composite_nlp
+from config.transformer_ner_adapter import get_nlp_instance
 from utils.ner_utils import detect_location_type  # Tu función para detectar ubicaciones
 
 # Cargar la pipeline compuesta
-nlp = load_composite_nlp()
+# nlp = load_composite_nlp()
 
 # Registrar la extensión 'processed' con force=True (si es necesario)
-Span.set_extension('processed', default=None, force=True)
+###Span.set_extension('processed', default=None, force=True)
 
 def extract_entities(text):
     """
     Procesa el texto con la pipeline combinada y extrae entidades.
     """
+    nlp = get_nlp_instance()
     doc = nlp(text)
 
     print("📀 ents: ", doc.ents)

@@ -4,6 +4,9 @@ from core.data.models.orm_models import Author, PersonalData
 from core.domain.models.author import AuthorDomain
 
 class AuthorRepository:
+    def __init__(self):
+        self._author_cache = {}
+
     def get_author_by_name(self, first_name: str, last_name: str):
         """
         Busca un autor en la BD por nombre y apellido.
@@ -66,3 +69,65 @@ class AuthorRepository:
             return parts[0], parts[1]
         else:
             return " ".join(parts[:-1]), parts[-1]  # Todo menos el último es `first_name`, el último es `last_name`
+        
+    def get_author_by_id(self, author_id: int) -> AuthorDomain:
+        # Primero verificar el cache
+        if author_id in self._author_cache:
+            return self._author_cache[author_id]
+
+        session = get_db_session()
+            
+        author = session.query(Author)\
+            .options(joinedload(Author.personal_data))\
+            .filter(Author.id == author_id)\
+            .first()
+            
+        if not author:
+            return None
+            
+        # Crear el objeto de dominio
+        author_domain = AuthorDomain(
+            id=author.id,
+            first_name=author.personal_data.first_name,
+            last_name=author.personal_data.last_name,
+            user_id=author.user_id
+        )
+        
+        # Guardar en cache
+        self._author_cache[author_id] = author_domain
+        
+        return author_domain
+            
+    def get_authors_by_ids(self, author_ids: list[int]) -> dict[int, AuthorDomain]:
+        """
+        Obtiene múltiples autores por sus IDs en una sola consulta
+        para evitar el problema N+1
+        """
+        # Filtrar IDs que ya están en cache
+        #missing_ids = [id for id in author_ids if id not in self._author_cache]
+        
+        #if not missing_ids:
+        #    return {id: self._author_cache[id] for id in author_ids}
+        
+        session = get_db_session()
+
+        #.filter(Author.id.in_(missing_ids))\
+        authors = session.query(Author)\
+            .options(joinedload(Author.personal_data))\
+            .filter(Author.id.in_(author_ids))\
+            .all()
+            
+        # Convertir a objetos de dominio y actualizar cache
+        for author in authors:
+            author_domain = AuthorDomain(
+                id=author.id,
+                first_name=author.personal_data.first_name,
+                last_name=author.personal_data.last_name,
+                user_id=author.user_id
+            )
+            author = author_domain.to_dict()
+            #self._author_cache[author.id] = author_domain
+                
+        # Retornar todos los autores solicitados (desde cache + nuevos)
+        #return {id: self._author_cache[id] for id in author_ids if id in self._author_cache}
+        return authors

@@ -90,6 +90,8 @@ class Version(Base):
     analyzed_content = relationship("AnalyzedContent", uselist=False, back_populates="version")
     spell_errors = relationship("SpellErrors", back_populates="version")
 
+    author = relationship("Author", backref="versions")
+
     def to_domain(self):
         return VersionDomain(
             id=self.id,

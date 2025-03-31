@@ -10,14 +10,19 @@ import re
 import spacy
 from spacy.tokens import Span
 from spacy.util import filter_spans
-from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
+# from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 from spacy.language import Language
+import logging
+from utils.transformers_wrapper import TransformersWrapper
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Importa la función de postprocesado desde ner_utils (ya definida en otro módulo)
 from utils.ner_utils import process_entity, detect_role
 
 # Registra la extensión "processed" en Span
-Span.set_extension('processed', default=None, force=True)
+######Span.set_extension('processed', default=None, force=True)
 
 # --- Parámetro de configuración ---
 # 1: SOLO usar el modelo de fechas legales (legal dates)
@@ -25,15 +30,26 @@ Span.set_extension('processed', default=None, force=True)
 # 3: Usarlos juntos (combinados)
 NER_MODE = 3
 
+_transformers_instance = None
+
+def get_transformers():
+    global _transformers_instance
+    if _transformers_instance is None:
+        _transformers_instance = TransformersWrapper.get_instance()
+        _transformers_instance.initialize()
+    return _transformers_instance
+
 class HuggingFaceNERModel:
     """
     Wrapper para el modelo RoBERTa configurado con 'ner'.
     """
     def __init__(self, repo, aggregation_strategy="simple", task="ner"):
-        self.tokenizer = AutoTokenizer.from_pretrained(repo)
-        self.model = AutoModelForTokenClassification.from_pretrained(repo)
+        transformers = get_transformers()
+
+        self.tokenizer = transformers.AutoTokenizer.from_pretrained(repo)
+        self.model = transformers.AutoModelForTokenClassification.from_pretrained(repo)
         try:
-            self.nlp_pipeline = pipeline(
+            self.nlp_pipeline = transformers.pipeline(
                 task,
                 model=self.model,
                 tokenizer=self.tokenizer,
@@ -41,7 +57,7 @@ class HuggingFaceNERModel:
             )
         except TypeError as e:
             print(f"Falling back to pipeline without aggregation_strategy due to: {e}")
-            self.nlp_pipeline = pipeline(
+            self.nlp_pipeline = transformers.pipeline(
                 task,
                 model=self.model,
                 tokenizer=self.tokenizer
@@ -76,10 +92,12 @@ class NerProcessor:
     Incorpora la funcionalidad para dividir el texto en chunks y deduplicar predicciones.
     """
     def __init__(self, repo, aggregation_strategy="simple", task="ner"):
-        self.tokenizer = AutoTokenizer.from_pretrained(repo)
-        self.model = AutoModelForTokenClassification.from_pretrained(repo)
+        transformers = get_transformers()
+
+        self.tokenizer = transformers.AutoTokenizer.from_pretrained(repo)
+        self.model = transformers.AutoModelForTokenClassification.from_pretrained(repo)
         try:
-            self.nlp_pipeline = pipeline(
+            self.nlp_pipeline = transformers.pipeline(
                 task,
                 model=self.model,
                 tokenizer=self.tokenizer,
@@ -87,7 +105,7 @@ class NerProcessor:
             )
         except TypeError as e:
             print(f"Falling back to pipeline without aggregation_strategy due to: {e}")
-            self.nlp_pipeline = pipeline(
+            self.nlp_pipeline = transformers.pipeline(
                 task,
                 model=self.model,
                 tokenizer=self.tokenizer
@@ -401,9 +419,37 @@ def composite_hf_ner_component(doc):
     
     return doc
 
-def load_composite_nlp():
-    nlp = spacy.load("es_core_news_lg")
-    nlp.add_pipe("composite_hf_ner", last=True)
-    return nlp
+# def load_composite_nlp():
+#     nlp = spacy.load("es_core_news_lg")
+#     nlp.add_pipe("composite_hf_ner", last=True)
+#     return nlp
 
-Language.component("composite_hf_ner", func=composite_hf_ner_component)
+#####Language.component("composite_hf_ner", func=composite_hf_ner_component)
+
+_nlp_instance = None
+
+def get_nlp_instance():
+    global _nlp_instance
+    if _nlp_instance is None:
+        # Registrar el componente
+        try:
+            logger.info("Inicializando modelos NLP...")
+            if not Language.has_factory("composite_hf_ner"):
+                Language.component("composite_hf_ner", func=composite_hf_ner_component)
+            
+            # Cargar spaCy y configurar
+            _nlp_instance = spacy.load("es_core_news_lg")
+            _nlp_instance.add_pipe("composite_hf_ner", last=True)
+            
+            # Registrar la extensión si no existe
+            if not Span.has_extension('processed'):
+                Span.set_extension('processed', default=None, force=True)
+            logger.info("Modelos NLP cargados exitosamente")
+        except Exception as e:
+            logger.error(f"Error al cargar modelos NLP: {e}")
+            raise
+    
+    return _nlp_instance
+
+def load_composite_nlp():
+    return get_nlp_instance()

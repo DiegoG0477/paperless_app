@@ -1,6 +1,8 @@
 # /app/runtime/bridge/event_handler.py
 import time
-from di.dependencies import login_use_case, set_main_path_use_case, get_main_path, sync_documents_use_case
+from di.dependencies import (login_use_case, set_main_path_use_case, 
+                             get_main_path, sync_documents_use_case,
+                             get_documents_use_case)
 
 def handle_event(message):
     """
@@ -13,12 +15,16 @@ def handle_event(message):
 
     elif command == "syncDocuments":
         return handle_sync_documents(message)
+        #return {"event": "syncDocuments", "data": {"message": "Backend activo", "timestamp": time.time()}}
 
     elif command == "login":
         return handle_login(message)
     
     elif command == "setMainPath":
         return handle_set_main_path(message)
+    
+    elif command == "getDocuments":
+        return handle_get_documents(message)
 
     else:
         return {"event": "error", "data": {"message": f"Comando desconocido: {command}"}}
@@ -102,5 +108,44 @@ def handle_sync_documents(message):
             "data": {
                 "success": False,
                 "error": f"Error durante la sincronización: {str(e)}"
+            }
+        }
+    
+def handle_get_documents(message):
+    """
+    Maneja la obtención de documentos (uno específico o todos).
+    """
+    try:
+        #data = message.get("data", {})
+        data = "empty"
+        #document_id = data.get("id")  # Será None si no se proporciona
+        document_id = None
+        
+        print("intentando procesar documentos")
+        
+        result = get_documents_use_case.execute(document_id)
+
+        #print("resultado del get documents: ", result)
+
+        if result.get("success"):
+            return {
+                "event": "getDocumentsSuccess",
+                "data": result["data"]
+            }
+        else:
+            return {
+                "event": "getDocumentsFailure",
+                "data": {
+                    "success": False,
+                    "error": result.get("error", "Error desconocido")
+                }
+            }
+
+    except Exception as e:
+        return {
+            "event": "getDocumentsFailure",
+            "data": {
+                "success": False,
+                "error": f"Error al obtener documentos: {str(e)}"
             }
         }

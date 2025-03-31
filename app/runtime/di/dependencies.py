@@ -21,3 +21,8 @@ def get_main_path():
     return settings_repository.get_main_path()
 
 sync_documents_use_case = sync_documents
+
+
+from core.usecases.get_documents_use_case import GetDocumentsUseCase
+
+get_documents_use_case = GetDocumentsUseCase()
