@@ -1,8 +1,10 @@
-// /app/ui/preload/index.js
-import { contextBridge } from 'electron';
+//app/ui/preload/index.js
+const { contextBridge, shell } = require('electron');
 import { electronAPI } from '@electron-toolkit/preload';
 
-const api = {}; // Puedes agregar APIs personalizadas aquí
+const api = {
+  openFile: (filePath) => shell.openPath(filePath)
+}; // Puedes agregar APIs personalizadas aquí
 
 if (process.contextIsolated) {
   try {

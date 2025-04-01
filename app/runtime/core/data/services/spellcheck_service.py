@@ -3,9 +3,6 @@ import re
 import spacy
 import enchant
 
-# Cargar modelo de idioma en español
-nlp = spacy.load("es_core_news_sm")
-
 def detect_spelling_errors(text):
     """
     Detecta errores ortográficos en el texto combinando spaCy y PyEnchant.
@@ -14,6 +11,8 @@ def detect_spelling_errors(text):
       - "word": La palabra mal escrita.
       - "suggestions": Sugerencias de corrección.
     """
+    nlp = spacy.load("es_core_news_sm")
+
     dictionary = enchant.Dict("es_ES")  # Corrector en español
     errors = []
 

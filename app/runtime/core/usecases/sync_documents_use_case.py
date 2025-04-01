@@ -9,11 +9,18 @@ from core.data.repositories.legal_calendar_repository import LegalCalendarReposi
 from core.data.repositories.spelling_error_repository import SpellingErrorRepository
 from core.data.services.file_copy_service import copy_file_to_storage
 from core.data.services.metadata_extractor import extract_metadata
-from core.data.services.file_scanner import scan_file
+from core.data.services.file_scanner import scan_file, format_extracted_text
 from core.data.services.hash_service import calculate_version_hash, calculate_unique_hash
 from core.data.services.spellcheck_service import detect_spelling_errors
 from core.data.services.entity_detection_service import extract_entities
-from core.data.services.cache_service import update_cache_for_document
+from core.data.services.cache_service import (
+    cache_document,
+    cache_version,
+    cache_analyzed_content,
+    cache_spelling_errors,
+    clear_all_caches,
+    cache_word_suggestions
+)
 
 # Lista de extensiones válidas
 ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx"}
@@ -21,20 +28,6 @@ ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx"}
 def sync_documents(main_path: str):
     """
     Sincroniza documentos en el directorio 'main_path' de forma recursiva.
-    Por cada documento:
-      1. Extrae y procesa metadatos. - CODE
-      2. Verifica y actualiza el autor en la BD. - CODE
-      3. Extrae el contenido completo (usando OCR si es necesario). - CODE
-      4. Genera la copia interna del archivo y crea el tag de versión. - CODE
-      5. Genera el hash único del documento y del archivo para identificar versiones. - CODE
-      6. Crea las entradas en la BD (Document y Version). - CODE
-      7. Detecta errores ortográficos y los registra en la BD. - CODE
-      8. Extrae entidades del fulltext. - CODE
-      9. Guarda el fulltext y las entidades en la tabla analyzed_content. - CODE
-      10. Genera eventos de calendario a partir de entidades de tipo fecha. - CODE
-      11. Actualiza la caché para este documento. - CODE
-      12. Repite para cada archivo. (verifica existencia -> registra documento || verifica cambios 
-      -> actualiza version || pasa al siguiente) - CODE
     """
     # Instanciar repositorios
     doc_repo = DocumentRepository()
@@ -58,6 +51,8 @@ def sync_documents(main_path: str):
 
             # 1. Extraer metadatos del documento
             metadata = extract_metadata(file_path)
+
+            print("metadata extraido: ", metadata)
 
             # 2. Verificar y actualizar el autor en la BD
             author_name = metadata.get("author", "").strip()
@@ -92,7 +87,11 @@ def sync_documents(main_path: str):
                     continue  # Si no hay cambios, pasamos al siguiente documento
 
             # 5. Extraer el contenido completo con OCR si es necesario
-            full_text = scan_file(file_path)
+            extracted_text = scan_file(file_path)
+
+            full_text = format_extracted_text(extracted_text)
+
+            print("📝 fulltext ", full_text)
 
             # 6. Generar tag de versión y copiar el archivo a la estructura interna
             version_tag = f"v{int(time.time())}"
@@ -119,6 +118,8 @@ def sync_documents(main_path: str):
 
             # 8. Extraer entidades del fulltext (usa spaCy + regex)
             entities = extract_entities(full_text)
+
+            print("entities finales ", entities)
 
             # Para fechas: Si alguna entrada de fecha no tiene evento, se asigna un valor por defecto.
             if "fechas" in entities:
@@ -150,9 +151,77 @@ def sync_documents(main_path: str):
                         time=hora_valor
                     )
 
-            # 11. Actualizar la caché para este documento
-            update_cache_for_document(file_path, doc_unique_hash, entities, version_hash, spelling_errors)
-
             print(f"✅ Documento procesado correctamente: {file_path}")
+
+    result = migrate_to_cache()
+
+    return result
+
+    #return {"success": True, "message": "Sincronización completada."}
+
+def migrate_to_cache():
+    doc_repo = DocumentRepository()
+    ver_repo = VersionRepository()
+    analyzed_repo = AnalyzedContentRepository()
+    spelling_repo = SpellingErrorRepository()
+
+    print("🔄 Iniciando migración de datos a caché...")
+
+    # Limpiar todas las cachés antes de la migración
+    clear_all_caches()
+    
+    try:
+        # 1. Migrar todos los documentos
+        print("📝 Migrando documentos...")
+        all_documents = doc_repo.get_all_documents()
+        for document in all_documents:
+            cache_document(document)
+
+        # 2. Migrar todas las versiones
+        print("📚 Migrando versiones...")
+        for document in all_documents:
+            versions = ver_repo.get_versions_by_document_id(document.id)
+            for version in versions:
+                cache_version(version)
+                
+                # 3. Migrar contenido analizado para cada versión
+                print("Migrando contenido de un doc...")
+                analyzed_content = analyzed_repo.get_by_version_id(version.id)
+                if analyzed_content:
+                    cache_analyzed_content(analyzed_content)
+                
+                # 4. Migrar errores ortográficos y sus sugerencias para cada versión
+                print("Migrando errores y sugerencias de un doc...")
+                spelling_errors = spelling_repo.get_errors_by_version(version.id)
+                if spelling_errors:
+                    # Cachear errores
+                    cache_spelling_errors(version.id, spelling_errors)
+                    # Cachear sugerencias para cada palabra con error
+                    for error in spelling_errors:
+                        word = error['word']
+                        suggestions = error.get('suggestions', [])
+                        if suggestions:  # Solo cachear si hay sugerencias
+                            cache_word_suggestions(word, suggestions)
+
+        print("✅ Migración a caché completada exitosamente")
+        
+    except Exception as e:
+        print(f"❌ Error durante la migración a caché: {str(e)}")
+        # Limpiar la caché en caso de error para evitar datos inconsistentes
+        clear_all_caches()
+        return {"success": False, "message": f"Error durante la migración a caché: {str(e)}"}
+
+    result = {
+        "success": True, 
+        "message": "migración a caché completadas.",
+        "stats": {
+            "documents_cached": len(all_documents),
+            "versions_cached": sum(len(ver_repo.get_versions_by_document_id(doc.id)) for doc in all_documents)
+        }
+    }
+
+    print(result)
+
+    #return result
 
     return {"success": True, "message": "Sincronización completada."}

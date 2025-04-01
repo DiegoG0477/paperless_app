@@ -1,64 +1,55 @@
-import React, { useEffect, useState } from 'react';
-import { useIpc } from '../../hooks/useIpc';
-import Versions from './features/Versions';
-import electronLogo from './assets/electron.svg';
+import { Toaster } from "./components/ui/toaster";
+import { Toaster as Sonner } from "./components/ui/sonner";
+import { TooltipProvider } from "./components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "./components/ThemeProvider";
+import { useState } from "react";
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
+import Search from "./pages/Search";
+import DocumentView from "./pages/DocumentView";
+import People from "./pages/People";
+import Organizations from "./pages/Organizations";
+import Locations from "./pages/Locations";
+import Settings from "./pages/Settings";
+import PersonDetail from "./pages/PersonDetail";
+import OrganizationDetail from "./pages/OrganizationDetail";
+import LocationDetail from "./pages/LocationDetail";
+import CalendarView from "./pages/CalendarView";
+import Login from "./pages/Login";
+import "./App.css";
 
-function App() {
-  const { sendCommand, onEvent } = useIpc();
-  const [pongCount, setPongCount] = useState(0);
-  const [syncStatus, setSyncStatus] = useState('');
-
-  // Manejar ping/pong automático
-  useEffect(() => {
-    const pingInterval = setInterval(() => {
-      sendCommand("ping");
-      console.log("enviando ping al backend");
-    }, 5000);
-
-    const unsubscribePong = onEvent("pong", (data) => {
-      setPongCount(prev => prev + 1);
-      console.log("Respuesta del backend:", data);
-    });
-
-    return () => {
-      clearInterval(pingInterval);
-      unsubscribePong();
-    };
-  }, [sendCommand, onEvent]);
-
-  // Manejar sincronización manual
-  const handleSync = () => {
-    sendCommand("syncDocuments");
-    setSyncStatus("Sincronizando...");
-    
-    const unsubscribe = onEvent("syncCompleted", (data) => {
-      setSyncStatus(`Sincronizado: ${data}`);
-      unsubscribe();
-    });
-  };
+const App = () => {
+  const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <>
-      <img alt="logo" className="logo" src={electronLogo} />
-      <div className="creator">Powered by electron-vite</div>
-      
-      <div className="status-panel">
-        <div className="metric">
-          🟢 Pongs recibidos: {pongCount}
-        </div>
-        
-        <button className="sync-btn" onClick={handleSync}>
-          🔄 Sincronizar documentos
-        </button>
-        
-        <div className="sync-status">
-          {syncStatus}
-        </div>
-      </div>
-
-      <Versions></Versions>
-    </>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="light" storageKey="proyecto-theme">
+        <TooltipProvider>
+          <BrowserRouter>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={<Index />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/document/:id" element={<DocumentView />} />
+              <Route path="/people" element={<People />} />
+              <Route path="/organizations" element={<Organizations />} />
+              <Route path="/locations" element={<Locations />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/persona/:id" element={<PersonDetail />} />
+              <Route path="/organizacion/:id" element={<OrganizationDetail />} />
+              <Route path="/ubicacion/:id" element={<LocationDetail />} />
+              <Route path="/calendar" element={<CalendarView />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
-}
+};
 
 export default App;

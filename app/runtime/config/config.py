@@ -18,19 +18,22 @@ def get_base_directory():
     env = get_env()
     if env == "DEV":
         # Ruta relativa en desarrollo
-        return Path(__file__).resolve().parent.parent.parent / "storage" / "paperless_db"
+        return Path(__file__).resolve().parent.parent.parent.parent / "storage" / "data"
     else:
         if os.name == 'nt':  # Windows
             return Path(os.getenv("APPDATA")) / "Paperless"
         else:
             # Para Linux y macOS, se recomienda ~/.local/share o ~/Library/Application Support
             # Aquí usamos ~/.local/share como ejemplo para Linux y macOS
-            return Path.home() / ".local" / "share" / "Paperless"
+            return Path.home() / ".local" / "share" / "Paperless" / "data"
 
 def get_db_path():
     """Devuelve la ruta de la base de datos SQLite."""
     base_dir = get_base_directory()
     base_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"spuesto db path: {base_dir}/paperless.db")
+
     return base_dir / "paperless.db"
 
 def get_template_db_path():
@@ -39,4 +42,4 @@ def get_template_db_path():
 
 def get_init_sql_path():
     """Devuelve la ruta del archivo init.sql."""
-    return Path(__file__).resolve().parent / "init.sql"
+    return Path(__file__).resolve().parent / "resources" / "init.sql"

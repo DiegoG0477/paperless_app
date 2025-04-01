@@ -3,10 +3,18 @@ import sys
 import json
 from bridge.event_handler import handle_event
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 def run_adapter():
     """
     Escucha los mensajes entrantes desde Electron, los procesa y responde.
     """
+
+    logging.info("Levantando manejador de eventos...")
+
     while True:
         line = sys.stdin.readline()
         if not line:
@@ -21,6 +29,3 @@ def run_adapter():
             error_response = {"event": "error", "data": {"message": str(e)}}
             sys.stdout.write(json.dumps(error_response) + "\n")
             sys.stdout.flush()
-
-if __name__ == '__main__':
-    run_adapter()

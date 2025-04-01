@@ -17,6 +17,9 @@ class PersonalData(Base):
     first_name = Column(String(42), nullable=False)
     last_name = Column(String(42), nullable=False)
 
+    # Relación 1:1 con User (un User tiene un PersonalData)
+    user = relationship("User", back_populates="personal_data", uselist=False)
+    # Relación 1:1 con Author (un Author tiene un PersonalData)
     author = relationship("Author", back_populates="personal_data", uselist=False)
 
 class User(Base):
@@ -26,32 +29,19 @@ class User(Base):
     password_hash = Column(String(72), nullable=False)
     registered_at = Column(DateTime, default=datetime.datetime.utcnow)
     personal_data_id = Column(Integer, ForeignKey('personal_data.id'))
-    personal_data = relationship("PersonalData", back_populates="user")
-    authors = relationship("Author", back_populates="user")
     
-    def to_domain(self):
-        """
-        Mapea este modelo ORM a un objeto de dominio (UserDomain).
-        """
-        # Se asume que personal_data puede ser None
-        first_name = self.personal_data.first_name if self.personal_data else None
-        last_name = self.personal_data.last_name if self.personal_data else None
-
-        return UserDomain(
-            user_id=self.id,
-            email=self.email,
-            password_hash=self.password_hash,
-            registered_at=self.registered_at,
-            first_name=first_name,
-            last_name=last_name
-        )
+    # Relaciones
+    personal_data = relationship("PersonalData", back_populates="user", uselist=False)
+    authors = relationship("Author", back_populates="user")
 
 class Author(Base):
     __tablename__ = 'authors'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    user_id = Column(String(32), ForeignKey('users.id'))  # Corregir a String(32)
     personal_data_id = Column(Integer, ForeignKey('personal_data.id'), nullable=False)
-
+    
+    # Relaciones
+    user = relationship("User", back_populates="authors")
     personal_data = relationship("PersonalData", back_populates="author")
 
 class Settings(Base):
@@ -69,7 +59,9 @@ class Document(Base):
     unique_hash = Column(String(255), unique=True, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     main_path = Column(Text)
+    
     versions = relationship("Version", back_populates="document", cascade="all, delete")
+    legal_events = relationship("LegalCalendar", back_populates="document", cascade="all, delete")
 
     def to_domain(self):
         return DocumentDomain(
@@ -93,8 +85,12 @@ class Version(Base):
     comment = Column(String(500))
     updated_at = Column(DateTime, default=datetime.datetime.utcnow)
     size_mb = Column(Numeric)
+   
     document = relationship("Document", back_populates="versions")
     analyzed_content = relationship("AnalyzedContent", uselist=False, back_populates="version")
+    spell_errors = relationship("SpellErrors", back_populates="version")
+
+    author = relationship("Author", backref="versions")
 
     def to_domain(self):
         return VersionDomain(

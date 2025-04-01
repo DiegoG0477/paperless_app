@@ -1,0 +1,95 @@
+{
+  "training_data": [
+    {
+      "text": "La sentencia fue dictada el 15/04/2022.",
+      "entities": [
+        [28, 38, "DATE"]
+      ]
+    },
+    {
+      "text": "La demanda se presentó el diez de abril de dos mil diecisiete.",
+      "entities": [
+        [26, 61, "DATE_NATURAL"]
+      ]
+    },
+    {
+      "text": "El contrato se firmó el 01/01/2020.",
+      "entities": [
+        [24, 34, "DATE"]
+      ]
+    },
+    {
+      "text": "El proceso inició el 3 de marzo de 2023.",
+      "entities": [
+        [20, 39, "DATE_NATURAL"]
+      ]
+    },
+    {
+      "text": "Se notificó la audiencia el 28/02/2021.",
+      "entities": [
+        [28, 38, "DATE"]
+      ]
+    },
+    {
+      "text": "La resolución fue emitida el veinticinco de diciembre de 2019.",
+      "entities": [
+        [29, 62, "DATE_NATURAL"]
+      ]
+    },
+    {
+      "text": "El acta fue aprobada el 31/12/2022.",
+      "entities": [
+        [25, 35, "DATE"]
+      ]
+    },
+    {
+        "text": "El Artículo 15 bis del Código Civil establece obligaciones para el proveedor.",
+        "entities": [
+          [3, 21, "LEGAL_REF"],
+          [25, 38, "LEGAL_DOC"]
+        ]
+      },
+      {
+        "text": "La Ley No. 2345 regula la protección al consumidor.",
+        "entities": [
+          [3, 14, "LEGAL_DOC"],
+          [15, 27, "LEGAL_REF"]
+        ]
+      },
+      {
+        "text": "El demandante Juan Pérez, representado por el abogado Martínez, inició el proceso.",
+        "entities": [
+          [3, 22, "PERSON_W_ROLE"],
+          [37, 48, "PERSON"]
+        ]
+      },
+      {
+        "text": "La resolución fue dictada el 22 de julio de 2023 en el Tribunal de lo Contencioso.",
+        "entities": [
+          [29, 51, "DATE_NATURAL"],
+          [60, 98, "ORG"]
+        ]
+      },
+      {
+        "text": "Se notificó el fallo el 01/08/2022 a través de la Oficina de Correspondencia.",
+        "entities": [
+          [16, 26, "DATE"],
+          [43, 81, "ORG"]
+        ]
+      },
+      {
+        "text": "El Juez Roberto Gómez dictó sentencia en el juicio, promoviendo el recurso de amparo.",
+        "entities": [
+          [3, 18, "PERSON_W_ROLE"],
+          [57, 64, "KEYWORD"]
+        ]
+      },
+      {
+        "text": "La Constitución Política, en su Art. 17, garantiza derechos fundamentales.",
+        "entities": [
+          [24, 33, "LEGAL_REF"],
+          [41, 73, "LEGAL_DOC"]
+        ]
+      }
+  ]
+}
