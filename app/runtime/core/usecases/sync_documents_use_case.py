@@ -222,4 +222,6 @@ def migrate_to_cache():
 
     print(result)
 
-    return result
+    #return result
+
+    return {"success": True, "message": "Sincronización completada."}

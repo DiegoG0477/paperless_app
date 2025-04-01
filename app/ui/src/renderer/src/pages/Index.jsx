@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
 import Toolbar from '../components/Toolbar';
 import DocumentCard from '../components/DocumentCard';
@@ -37,6 +37,10 @@ const Index = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Estados para la barra de progreso de sincronización
+  const [syncProgress, setSyncProgress] = useState(0);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const syncIntervalRef = useRef(null);
 
   // Function to fetch documents from the backend using IPC
   const fetchDocuments = () => {
@@ -57,14 +61,12 @@ const Index = () => {
         firstItem: Array.isArray(data) && data.length > 0 ? data[0] : null
       });
 
-      // Handle both array and single-object cases
       if (Array.isArray(data)) {
         setDocuments(data);
         setFilteredDocuments(data);
         setError(null);
         toast.success(`${data.length} documentos cargados`);
       } else if (data && typeof data === 'object') {
-        // If a single document object is returned, wrap it in an array
         setDocuments([data]);
         setFilteredDocuments([data]);
         setError(null);
@@ -85,13 +87,25 @@ const Index = () => {
     });
 
     const unsubscribeSyncSuccess = onEvent('syncSuccess', async (data) => {
+      clearInterval(syncIntervalRef.current);
+      setSyncProgress(100);
       toast.success('Documentos sincronizados correctamente');
-      // Recargar documentos después de sincronizar
-      fetchDocuments();
+      // Esperamos un momento antes de resetear la barra de progreso
+      setTimeout(() => {
+        setIsSyncing(false);
+        setSyncProgress(0);
+        fetchDocuments();
+      }, 1000);
     });
 
     const unsubscribeSyncFailure = onEvent('syncFailure', (data) => {
+      clearInterval(syncIntervalRef.current);
+      setSyncProgress(100);
       toast.error(data.error || 'Error al sincronizar documentos');
+      setTimeout(() => {
+        setIsSyncing(false);
+        setSyncProgress(0);
+      }, 1000);
     });
 
     // Initial documents fetch
@@ -190,8 +204,21 @@ const Index = () => {
 
   const simulateSyncDocuments = () => {
     console.log("Sincronizando documentos...");
-    // En una aplicación real, este comando puede sincronizar los documentos.
+    setIsSyncing(true);
+    setSyncProgress(0);
     sendCommand('syncDocuments');
+
+    // Inicia un intervalo que incrementa el progreso hasta el 97%
+    syncIntervalRef.current = setInterval(() => {
+      setSyncProgress(prev => {
+        if (prev < 97) {
+          return prev + 3;
+        } else {
+          clearInterval(syncIntervalRef.current);
+          return prev;
+        }
+      });
+    }, 1000);
   };
 
   return (
@@ -207,6 +234,15 @@ const Index = () => {
               <span>Sincronizar Documentos</span>
             </button>
           </div>
+          {/* Barra de progreso de sincronización */}
+          {isSyncing && (
+            <div className="px-6">
+              <div className="w-full bg-gray-200 h-2 rounded">
+                <div className="bg-crimson h-2 rounded" style={{ width: `${syncProgress}%` }}></div>
+              </div>
+              <div className="text-sm text-gray-600 mt-1">{syncProgress}%</div>
+            </div>
+          )}
           {/* Main content */}
           <div className="bg-white shadow-sm rounded-lg mx-4 mb-8 overflow-hidden transition-all duration-300 animate-fade-in">
             <Toolbar 
@@ -370,6 +406,7 @@ const Index = () => {
           </div>
         </main>
       </div>
+      <Toaster />
     </div>
   );
 };

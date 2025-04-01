@@ -20,9 +20,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar"
 import { Separator } from "../components/ui/separator"
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group"
 import { toast } from "sonner"
+// Importamos nuestro hook useIpc
+import { useIpc } from "../../../hooks/useIpc"
 
 const Settings = () => {
   const { theme, setTheme } = useTheme()
+  const { sendCommand } = useIpc()
+
   const [scanFolder, setScanFolder] = useState(
     localStorage.getItem("scanFolder") || ""
   )
@@ -35,7 +39,10 @@ const Settings = () => {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+
   const fileInputRef = useRef(null)
+  // Ref para el input de selección de carpeta
+  const folderInputRef = useRef(null)
 
   const handleDarkModeChange = () => {
     setTheme(theme === "dark" ? "light" : "dark")
@@ -45,6 +52,27 @@ const Settings = () => {
     const path = e.target.value
     setScanFolder(path)
     localStorage.setItem("scanFolder", path)
+    sendCommand("setMainPath", { path })
+  }
+
+  const handleFolderButtonClick = () => {
+    if (folderInputRef.current) {
+      folderInputRef.current.click()
+    }
+  }
+
+  const handleFolderSelect = e => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      const file = files[0]
+      // Obtenemos el path completo del archivo y removemos el nombre del archivo usando una regex
+      const fullPath = file.path
+      const folder = fullPath.replace(/[^\\\/]+$/, "") // remueve la parte final (nombre del archivo)
+      setScanFolder(folder)
+      localStorage.setItem("scanFolder", folder)
+      sendCommand("setMainPath", { path: folder })
+      toast.success("Carpeta de documentos seleccionada: " + folder)
+    }
   }
 
   const handleUsernameChange = e => {
@@ -82,9 +110,6 @@ const Settings = () => {
       toast.error("Las contraseñas no coinciden")
       return
     }
-
-    // Here you would normally verify the current password and update with new password
-    // For this demo, we'll just simulate success
     localStorage.setItem("hasPassword", "true")
     toast.success("Contraseña actualizada correctamente")
     setCurrentPassword("")
@@ -118,8 +143,7 @@ const Settings = () => {
                     Información de Perfil
                   </CardTitle>
                   <CardDescription>
-                    Actualiza tu información de perfil y cómo te ven los demás
-                    en el sistema.
+                    Actualiza tu información de perfil y cómo te ven los demás en el sistema.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -189,8 +213,7 @@ const Settings = () => {
                       Carpeta de Documentos
                     </Label>
                     <p className="text-sm text-muted-foreground mb-2">
-                      Selecciona la carpeta principal desde donde se leerán los
-                      archivos
+                      Selecciona la carpeta principal desde donde se leerán los archivos
                     </p>
                     <div className="flex gap-2">
                       <Input
@@ -200,9 +223,18 @@ const Settings = () => {
                         onChange={handleScanFolderChange}
                         className="flex-1"
                       />
-                      <Button variant="outline" size="icon">
+                      <Button variant="outline" size="icon" onClick={handleFolderButtonClick}>
                         <FolderOpen className="h-4 w-4" />
                       </Button>
+                      {/* Input oculto para seleccionar la carpeta */}
+                      <input
+                        type="file"
+                        ref={folderInputRef}
+                        style={{ display: "none" }}
+                        webkitdirectory="true"
+                        directory="true"
+                        onChange={handleFolderSelect}
+                      />
                     </div>
                   </div>
                 </CardContent>

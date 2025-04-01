@@ -102,7 +102,8 @@ def handle_sync_documents(message):
     """
     try:
         # Obtener la ruta principal de la configuración
-        main_path = get_main_path()
+        #main_path = get_main_path()
+        main_path = "home/diego/Documentos/Paperless/sample"
         
         if not main_path:
             return {
